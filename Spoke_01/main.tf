@@ -1,9 +1,14 @@
+data "azurerm_client_config" "current" {}
+data "azuread_client_config" "current" {}
+
+# Create the Resource Group
 resource "azurerm_resource_group" "Spoke_01" {
    for_each = var.rg_details
    name     = each.value.rg_name
    location = each.value.rg_location
 }
 
+# Create the Virtual Network with address space
 resource "azurerm_virtual_network" "Spoke_01_vnet" {
     for_each = var.vnet_details
     name = each.value.vnet_name
@@ -13,6 +18,7 @@ resource "azurerm_virtual_network" "Spoke_01_vnet" {
     depends_on = [ azurerm_resource_group.Spoke_01 ]
 }
 
+# Create the Subnets with address prefixes
 resource "azurerm_subnet" "subnets" {
   for_each = var.subnet_details
   name = each.key
@@ -22,6 +28,7 @@ resource "azurerm_subnet" "subnets" {
   depends_on = [ azurerm_virtual_network.Spoke_01_vnet ]
 }
 
+# Create the Network Security Group with Rules
 resource "azurerm_network_security_group" "nsg" {
   for_each = toset(local.subnet_names)
   name = each.key
@@ -46,6 +53,7 @@ resource "azurerm_network_security_group" "nsg" {
   
 }
 
+# Associate the NSG for their Subnets
 resource "azurerm_subnet_network_security_group_association" "nsg_ass" {
   for_each = { for idx , subnet in azurerm_subnet.subnets : idx => subnet.id}
   subnet_id                 = each.value
@@ -53,6 +61,7 @@ resource "azurerm_subnet_network_security_group_association" "nsg_ass" {
   depends_on = [ azurerm_network_security_group.nsg ]
 }
 
+# Create the Network Interface card for Virtual Machines
 resource "azurerm_network_interface" "subnet_nic" {
   for_each = toset(local.subnet_names)
   name                = "${each.key}-NIC"
@@ -67,7 +76,8 @@ resource "azurerm_network_interface" "subnet_nic" {
   depends_on = [ azurerm_virtual_network.Spoke_01_vnet , azurerm_subnet.subnets ]
 }
 
-resource "azurerm_windows_virtual_machine" "example" {
+# Create the Virtual Machines(VM) and assign the NIC to specific VMs
+resource "azurerm_windows_virtual_machine" "VMs" {
   name                  = "${azurerm_subnet.subnets[local.nsg_names[each.key]].name}-VM"
   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
   location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
@@ -89,4 +99,20 @@ resource "azurerm_windows_virtual_machine" "example" {
     version   = "latest"
   }
   depends_on = [ azurerm_network_interface.subnet_nic ]
+}
+
+# Create the Storage account for FileShare
+resource "azurerm_storage_account" "storage-account" {
+  name                     = "examplestorageacct"
+  resource_group_name =     azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
+  location                 = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+ 
+# Create the FileShare in Storage account
+resource "azurerm_storage_share" "example" {
+  name                 = "exampleshare"
+  storage_account_name = azurerm_storage_account.storage-account.name
+  quota                = 5
 }

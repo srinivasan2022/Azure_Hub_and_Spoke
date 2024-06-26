@@ -1,9 +1,11 @@
+# Create the Resource Group
 resource "azurerm_resource_group" "On_Premises" {
    for_each = var.rg_details
    name     = each.value.rg_name
    location = each.value.rg_location
 }
 
+# Create the Virtual Network with address space
 resource "azurerm_virtual_network" "On_Premises_vnet" {
     for_each = var.vnet_details
     name = each.value.vnet_name
@@ -13,6 +15,7 @@ resource "azurerm_virtual_network" "On_Premises_vnet" {
     depends_on = [ azurerm_resource_group.On_Premises ]
 }
 
+# Create the Subnets with address prefixes
 resource "azurerm_subnet" "subnets" {
   for_each = var.subnet_details
   name = each.key
@@ -22,33 +25,100 @@ resource "azurerm_subnet" "subnets" {
   depends_on = [ azurerm_virtual_network.On_Premises_vnet ]
 }
 
-resource "azurerm_network_security_group" "nsg" {
+# Create the Public IP for VPN Gateway 
+resource "azurerm_public_ip" "public_ips" {
+  name = azurerm_subnet.subnets["GatewaySubnet"].name
+  location            = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  depends_on = [ azurerm_resource_group.On_Premises ]
+}
+
+# Create the VPN Gateway in their Specified Subnet
+resource "azurerm_virtual_network_gateway" "gateway" {
+  name                = "Hub-vpn-gateway"
+  location            = azurerm_resource_group.On_Premises["On_Premises_RG"].location
+  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+ 
+  type     = "Vpn"
+  vpn_type = "RouteBased"
+  active_active = false
+  enable_bgp    = false
+  sku           = "VpnGw1"
+ 
+  ip_configuration {
+    name                = "vnetGatewayConfig"
+    public_ip_address_id = azurerm_public_ip.public_ips["GatewaySubnet"].id
+    private_ip_address_allocation = "Dynamic"
+    subnet_id = azurerm_subnet.subnets["GatewaySubnet"].id
+  }
+  depends_on = [ azurerm_resource_group.On_Premises , azurerm_public_ip.public_ips , azurerm_subnet.subnets ]
+}
+
+# Create the Local Network Gateway for VPN Gateway
+resource "azurerm_local_network_gateway" "OnPremises_local_gateway" {
+  name                = "OnPremises-To-Hub"
+  location            = azurerm_resource_group.On_Premises["On_Premises_RG"].location
+  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  gateway_address     = "YOUR_ON_PREMISES_VPN_PUBLIC_IP"
+  address_space       = ["YOUR_ON_PREMISES_ADDRESS_SPACE"]
+  depends_on = [ azurerm_public_ip.public_ips , azurerm_virtual_network_gateway.gateway ]
+}
+
+# Create the VPN-Connection for Connecting the Networks
+resource "azurerm_virtual_network_gateway_connection" "vpn_connection" {
+  name                = "OnPremises-Hub-vpn-connection"
+  location            = azurerm_resource_group.On_Premises["On_Premises_RG"].location
+  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  virtual_network_gateway_id     = azurerm_virtual_network_gateway.gateway.id
+  local_network_gateway_id       = azurerm_local_network_gateway.OnPremises_local_gateway.id
+  type                           = "IPsec"
+  connection_protocol            = "IKEv2"
+  shared_key                     = "YourSharedKey"
+
+  depends_on = [ azurerm_virtual_network_gateway.gateway , azurerm_local_network_gateway.OnPremises_local_gateway]
+}
+
+# Create the Network Interface card for Virtual Machines
+resource "azurerm_network_interface" "subnet_nic" {
   for_each = toset(local.subnet_names)
-  name = each.key
+  name                = "${each.key}-NIC"
   resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
   location = azurerm_resource_group.On_Premises["On_Premises_RG"].location
 
-  dynamic "security_rule" {                           
-     for_each = { for rule in local.rules_csv : rule.name => rule }
-     content {
-      name                       = security_rule.value.name
-      priority                   = security_rule.value.priority
-      direction                  = security_rule.value.direction
-      access                     = security_rule.value.access
-      protocol                   = security_rule.value.protocol
-      source_port_range          = security_rule.value.source_port_range
-      destination_port_range     = security_rule.value.destination_port_range
-      source_address_prefix      = security_rule.value.source_address_prefix
-      destination_address_prefix = security_rule.value.destination_address_prefix
-    }
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.subnets[local.subnet_names[each.key]].id
+    private_ip_address_allocation = "Dynamic"
   }
-  depends_on = [ azurerm_subnet.subnets ]
-  
+  depends_on = [ azurerm_virtual_network.On_Premises_vnet , azurerm_subnet.subnets ]
 }
 
-resource "azurerm_subnet_network_security_group_association" "nsg_ass" {
-  for_each = { for idx , subnet in azurerm_subnet.subnets : idx => subnet.id}
-  subnet_id                 = each.value
-  network_security_group_id =   azurerm_network_security_group.nsg[local.nsg_names[each.key]].id
-  depends_on = [ azurerm_network_security_group.nsg ]
+# Create the Virtual Machines(VM) and assign the NIC to specific VMs
+resource "azurerm_windows_virtual_machine" "VMs" {
+  for_each = toset(local.subnet_names)
+  name = "${each.key}-VM"
+  //name                  = "${azurerm_subnet.subnets[local.subnet_names[each.key]].name}-VM"
+  resource_group_name = azurerm_resource_group.Spoke_01["On_Premises_RG"].name
+  location = azurerm_resource_group.Spoke_01["On_Premises_RG"].location
+  size                  = "Standard_DS1_v2"
+  admin_username        = var.admin_username
+  admin_password        = var.admin_password
+  //for_each = {for idx , nic in azurerm_network_interface.subnet_nic : idx => nic.id}
+  network_interface_ids = [azurerm_network_interface.subnet_nic[local.NIC_names[each.key]].id]
+  //network_interface_ids = [each.value]
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2019-Datacenter"
+    version   = "latest"
+  }
+  depends_on = [ azurerm_network_interface.subnet_nic ]
 }

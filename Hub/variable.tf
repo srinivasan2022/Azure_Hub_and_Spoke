@@ -40,14 +40,9 @@ variable "subnet_details" {
       address_prefix = "10.10.1.0/27"
     },
     
-    "workload" = {
-        subnet_name = "workload"
+    "AzureBastionSubnet" = {
+        subnet_name = "AzureBastionSubnet"
         address_prefix = "10.10.2.0/24"
     }
   }
-}
-
-variable "rules_file" {
-    type = string
-    default = "rules.csv"
 }
