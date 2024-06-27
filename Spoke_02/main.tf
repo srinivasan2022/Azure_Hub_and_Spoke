@@ -67,56 +67,91 @@ resource "azurerm_public_ip" "public_ip" {
   sku                 = "Standard"
 }
 
-# Create the Application for their dedicated subnet
-resource "azurerm_application_gateway" "appGW" {
-  name                = "App-Gateway"
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
-  sku {
-    name     = "Standard_v2"
-    tier     = "Standard_v2"
-    capacity = 2
-  }
+# # Create the Application for their dedicated subnet
+# resource "azurerm_application_gateway" "appGW" {
+#   name                = "App-Gateway"
+#   resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
+#   location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
+#   sku {
+#     name     = "Standard_v2"
+#     tier     = "Standard_v2"
+#     capacity = 2
+#   }
 
-  gateway_ip_configuration {
-    name      = "appgw-ip-config"
-    subnet_id = azurerm_subnet.subnets["App-GW"].id
-  }
+#   gateway_ip_configuration {
+#     name      = "appgw-ip-config"
+#     subnet_id = azurerm_subnet.subnets["App-GW"].id
+#   }
 
-  frontend_ip_configuration {
-    name                 = "appgw-frontend-ip"
-    public_ip_address_id = azurerm_public_ip.public_ip.id
-  }
+#   frontend_ip_configuration {
+#     name                 = "appgw-frontend-ip"
+#     public_ip_address_id = azurerm_public_ip.public_ip.id
+#   }
 
-  frontend_port {
-    name = "frontend-port"
-    port = 80
-  }
+#   frontend_port {
+#     name = "frontend-port"
+#     port = 80
+#   }
 
-  backend_address_pool {
-    name = "appgw-backend-pool"
-  }
+#   backend_address_pool {
+#     name = "appgw-backend-pool"
+#   }
 
-  backend_http_settings {
-    name                  = "appgw-backend-http-settings"
-    cookie_based_affinity = "Disabled"
-    port                  = 80
-    protocol              = "Http"
-    request_timeout       = 20
-  }
+#   backend_http_settings {
+#     name                  = "appgw-backend-http-settings"
+#     cookie_based_affinity = "Disabled"
+#     port                  = 80
+#     protocol              = "Http"
+#     request_timeout       = 20
+#   }
 
-  http_listener {
-    name                           = "appgw-http-listener"
-    frontend_ip_configuration_name = "appgw-frontend-ip"
-    frontend_port_name             = "frontend-port"
-    protocol                       = "Http"
-  }
+#   http_listener {
+#     name                           = "appgw-http-listener"
+#     frontend_ip_configuration_name = "appgw-frontend-ip"
+#     frontend_port_name             = "frontend-port"
+#     protocol                       = "Http"
+#   }
 
-  request_routing_rule {
-    name                       = "appgw-routing-rule"
-    rule_type                  = "Basic"
-    http_listener_name         = "appgw-http-listener"
-    backend_address_pool_name  = "appgw-backend-pool"
-    backend_http_settings_name = "appgw-backend-http-settings"
-  }
+#   request_routing_rule {
+#     name                       = "appgw-routing-rule"
+#     rule_type                  = "Basic"
+#     http_listener_name         = "appgw-http-listener"
+#     backend_address_pool_name  = "appgw-backend-pool"
+#     backend_http_settings_name = "appgw-backend-http-settings"
+#   }
+# }
+
+## VMSS
+
+
+# Fetch the data from Hub Virtual Network for peering the Spoke_02 Virtual Network (Spoke_02 <--> Hub)
+data "azurerm_virtual_network" "Hub_vnet" {
+  name = "Hub_vnet"
+  resource_group_name = "Hub_RG"
+}
+
+# Establish the Peering between Spoke_02 and Hub networks (Spoke_02 <--> Hub)
+resource "azurerm_virtual_network_peering" "Spoke_02-To-Hub" {
+  name                      = "Spoke_02-To-Hub"
+  resource_group_name       = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].resource_group_name
+  virtual_network_name      = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].name
+  remote_virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id
+  allow_virtual_network_access = true
+  allow_forwarded_traffic   = true
+  allow_gateway_transit     = false
+  use_remote_gateways       = false
+  depends_on = [ azurerm_virtual_network.Spoke_02_vnet , data.azurerm_virtual_network.Hub_vnet  ]
+}
+
+# Establish the Peering between and Hub Spoke_01 networks (Hub <--> Spoke_02)
+resource "azurerm_virtual_network_peering" "Hub-Spoke_02" {
+  name                      = "Hub-Spoke_02"
+  resource_group_name       = data.azurerm_virtual_network.Hub_vnet.resource_group_name
+  virtual_network_name      = data.azurerm_virtual_network.Hub_vnet.name
+  remote_virtual_network_id = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].id
+  allow_virtual_network_access = true
+  allow_forwarded_traffic   = true
+  allow_gateway_transit     = false
+  use_remote_gateways       = false
+  depends_on = [ azurerm_virtual_network.Spoke_02_vnet , data.azurerm_virtual_network.Hub_vnet ]
 }
