@@ -37,56 +37,56 @@ resource "azurerm_public_ip" "public_ips" {
 }
 
 # Create the Azure Bastion Host
-# resource "azurerm_bastion_host" "bastion" {
-#   name                = "Bastion"
-#   location            = azurerm_resource_group.Hub["Hub_RG"].location
-#   resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
-#   sku = "Basic"
-#   ip_configuration {
-#     public_ip_address_id = azurerm_public_ip.public_ips["AzureBastionSubnet"].id
-#     name = "example"
-#     subnet_id = azurerm_subnet.subnets["AzureBastionSubnet"].id
-#   }
-#   depends_on = [ azurerm_resource_group.Hub , azurerm_public_ip.public_ips , azurerm_subnet.subnets ]
-# }
+resource "azurerm_bastion_host" "bastion" {
+  name                = "Bastion"
+  location            = azurerm_resource_group.Hub["Hub_RG"].location
+  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+  sku = "Basic"
+  ip_configuration {
+    public_ip_address_id = azurerm_public_ip.public_ips["AzureBastionSubnet"].id
+    name = "example"
+    subnet_id = azurerm_subnet.subnets["AzureBastionSubnet"].id
+  }
+  depends_on = [ azurerm_resource_group.Hub , azurerm_public_ip.public_ips , azurerm_subnet.subnets ]
+}
 
 # Create the Azure Firewall in their Specified Subnet
-# resource "azurerm_firewall" "firewall" {
-#   name                = "Firewall"
-#   location            = azurerm_resource_group.Hub["Hub_RG"].location
-#   resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
-#    sku_name = "AZFW_VNet"
-#    sku_tier = "Standard"
+resource "azurerm_firewall" "firewall" {
+  name                = "Firewall"
+  location            = azurerm_resource_group.Hub["Hub_RG"].location
+  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+   sku_name = "AZFW_VNet"
+   sku_tier = "Standard"
 
-#   ip_configuration {
-#     name                 = "firewallconfiguration"
-#     subnet_id            = azurerm_subnet.subnets["AzureFirewallSubnet"].id
-#     public_ip_address_id = azurerm_public_ip.public_ips["AzureFirewallSubnet"].id
-#   }
+  ip_configuration {
+    name                 = "firewallconfiguration"
+    subnet_id            = azurerm_subnet.subnets["AzureFirewallSubnet"].id
+    public_ip_address_id = azurerm_public_ip.public_ips["AzureFirewallSubnet"].id
+  }
 
-#   depends_on = [ azurerm_resource_group.Hub , azurerm_public_ip.public_ips , azurerm_subnet.subnets]
-# }
+  depends_on = [ azurerm_resource_group.Hub , azurerm_public_ip.public_ips , azurerm_subnet.subnets]
+}
 
 # Create the VPN Gateway in their Specified Subnet
-# resource "azurerm_virtual_network_gateway" "gateway" {
-#   name                = "Hub-vpn-gateway"
-#   location            = azurerm_resource_group.Hub["Hub_RG"].location
-#   resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+resource "azurerm_virtual_network_gateway" "gateway" {
+  name                = "Hub-vpn-gateway"
+  location            = azurerm_resource_group.Hub["Hub_RG"].location
+  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
  
-#   type     = "Vpn"
-#   vpn_type = "RouteBased"
-#   active_active = false
-#   enable_bgp    = false
-#   sku           = "VpnGw1"
+  type     = "Vpn"
+  vpn_type = "RouteBased"
+  active_active = false
+  enable_bgp    = false
+  sku           = "VpnGw1"
  
-#   ip_configuration {
-#     name                = "vnetGatewayConfig"
-#     public_ip_address_id = azurerm_public_ip.public_ips["GatewaySubnet"].id
-#     private_ip_address_allocation = "Dynamic"
-#     subnet_id = azurerm_subnet.subnets["GatewaySubnet"].id
-#   }
-#   depends_on = [ azurerm_resource_group.Hub , azurerm_public_ip.public_ips , azurerm_subnet.subnets ]
-# }
+  ip_configuration {
+    name                = "vnetGatewayConfig"
+    public_ip_address_id = azurerm_public_ip.public_ips["GatewaySubnet"].id
+    private_ip_address_allocation = "Dynamic"
+    subnet_id = azurerm_subnet.subnets["GatewaySubnet"].id
+  }
+  depends_on = [ azurerm_resource_group.Hub , azurerm_public_ip.public_ips , azurerm_subnet.subnets ]
+}
 
 # Fetch the data from On_premises Gateway Public_IP (IP_address)
 data "azurerm_public_ip" "OnPrem-VPN-GW-public-ip" {
@@ -100,36 +100,31 @@ data "azurerm_virtual_network" "On_Premises_vnet" {
   resource_group_name = "On_Premises_RG"
 }
 
-# Fetch the data from Spoke_01 Virtual Network for peering the Hub Virtual Network (Hub <--> Spoke_01)
-data "azurerm_virtual_network" "Spoke_01_vnet" {
-  name = "Spoke_01_vnet"
-  resource_group_name = "Spoke_01_RG"
+
+# Create the Local Network Gateway for VPN Gateway
+resource "azurerm_local_network_gateway" "Hub_local_gateway" {
+  name                = "Hub-To-OnPremises"
+  location            = azurerm_resource_group.Hub["Hub_RG"].location
+  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+  gateway_address     = data.azurerm_public_ip.OnPrem-VPN-GW-public-ip.ip_address
+  address_space       = [data.azurerm_virtual_network.On_Premises_vnet.address_space[0]]
+  depends_on = [ azurerm_public_ip.public_ips , azurerm_virtual_network_gateway.gateway , 
+              data.azurerm_public_ip.OnPrem-VPN-GW-public-ip ,data.azurerm_virtual_network.On_Premises_vnet ]
 }
 
-# # Create the Local Network Gateway for VPN Gateway
-# resource "azurerm_local_network_gateway" "Hub_local_gateway" {
-#   name                = "Hub-To-OnPremises"
-#   location            = azurerm_resource_group.Hub["Hub_RG"].location
-#   resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
-#   gateway_address     = data.azurerm_public_ip.OnPrem-VPN-GW-public-ip.ip_address
-#   address_space       = [data.azurerm_virtual_network.On_Premises_vnet.address_space[0]]
-#   depends_on = [ azurerm_public_ip.public_ips , azurerm_virtual_network_gateway.gateway , 
-#               data.azurerm_public_ip.OnPrem-VPN-GW-public-ip ,data.azurerm_virtual_network.On_Premises_vnet ]
-# }
+ # Create the VPN-Connection for Connecting the Networks
+resource "azurerm_virtual_network_gateway_connection" "vpn_connection" {
+  name                           = "Hub-OnPremises-vpn-connection"
+  location            = azurerm_resource_group.Hub["Hub_RG"].location
+  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+  virtual_network_gateway_id     = azurerm_virtual_network_gateway.gateway.id
+  local_network_gateway_id       = azurerm_local_network_gateway.Hub_local_gateway.id
+  type                           = "IPsec"
+  connection_protocol            = "IKEv2"
+  shared_key                     = "YourSharedKey"
 
-# Create the VPN-Connection for Connecting the Networks
-# resource "azurerm_virtual_network_gateway_connection" "vpn_connection" {
-#   name                           = "Hub-OnPremises-vpn-connection"
-#   location            = azurerm_resource_group.Hub["Hub_RG"].location
-#   resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
-#   virtual_network_gateway_id     = azurerm_virtual_network_gateway.gateway.id
-#   local_network_gateway_id       = azurerm_local_network_gateway.Hub_local_gateway.id
-#   type                           = "IPsec"
-#   connection_protocol            = "IKEv2"
-#   shared_key                     = "YourSharedKey"
-
-#   depends_on = [ azurerm_virtual_network_gateway.gateway , azurerm_local_network_gateway.Hub_local_gateway]
-# }
+  depends_on = [ azurerm_virtual_network_gateway.gateway , azurerm_local_network_gateway.Hub_local_gateway]
+}
 
 
 
