@@ -1,8 +1,10 @@
+# Create the Resource Group
 resource "azurerm_resource_group" "rg" {
   name = var.resource_group_name
   location = var.location
 }
 
+# Create the Storage Account
 resource "azurerm_storage_account" "storageaccount" {
   name = var.storage_account_name
   resource_group_name = azurerm_resource_group.rg.name
@@ -12,6 +14,7 @@ resource "azurerm_storage_account" "storageaccount" {
   depends_on = [ azurerm_resource_group.rg ]
 }
 
+# Create the Storage Account Container to store the state files
 resource "azurerm_storage_container" "project_state" {
   name = "project-state-files"
   storage_account_name = azurerm_storage_account.storageaccount.name
