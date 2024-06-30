@@ -17,9 +17,9 @@ The terraform state file, by default, is named terraform. tfstate and is held in
 
 In Terraform, a remote state refers to storing the state file of your Terraform-managed infrastructure in a remote location instead of locally on your machine. This allows for better collaboration, security, and state management in larger or team-based projects.
 Storage Options: Remote state can be stored in various backend services such as Amazon S3, Google Cloud Storage, Azure Blob Storage, Terraform Cloud, etc.
-Collaboration: By storing the state remotely, multiple team members can access and update the state file, ensuring that everyone is working with the most current state.
-Security: Remote backends can offer additional security features such as encryption and access control.
-Configuration: To use a remote state, you need to configure the backend block in your Terraform configuration file.
+- Collaboration: By storing the state remotely, multiple team members can access and update the state file, ensuring that everyone is working with the most current state.
+- Security: Remote backends can offer additional security features such as encryption and access control.
+- Configuration: To use a remote state, you need to configure the backend block in your Terraform configuration file.
 
 ### Configuration :
 ```hcl
