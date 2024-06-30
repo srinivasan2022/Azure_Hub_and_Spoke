@@ -2,9 +2,9 @@
 ## Remote State Files
 
 ### Steps :
-1.First we should create the Resource Group
-2.We create the Azure Blob Storage account in resource group
-3.Finally we create the Storage account container to store the state files
+- 1.First we should create the Resource Group
+- 2.We create the Azure Blob Storage account in resource group
+- 3.Finally we create the Storage account container to store the state files
 
 ## Architecture Diagram :
 ![statefile](https://github.com/srinivasan2022/Project/assets/118502121/f74ce2b8-c79e-4588-91ca-91f43dd6301c)
