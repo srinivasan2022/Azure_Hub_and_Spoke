@@ -34,7 +34,6 @@ Storage Options: Remote state can be stored in various backend services such as 
 ## Architecture Diagram :
 ![statefile](https://github.com/srinivasan2022/Project/assets/118502121/f3e5bb70-d61c-4a19-ad47-e4e9ad618b9d)
 
-This is the backend state files configuration.
 
 ```hcl
 # Create the Resource Group
@@ -124,5 +123,7 @@ No outputs.
 ## Modules
 
 No modules.
+
+This is the state files configuration.
 
 <!-- END_TF_DOCS -->
