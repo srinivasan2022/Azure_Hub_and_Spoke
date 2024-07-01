@@ -14,3 +14,14 @@ output "subnet_details" {
 #   value = azurerm_windows_virtual_machine.VMs
 # }
 
+output "NSG" {
+  value = azurerm_network_security_group.nsg
+}
+
+output "Key_Vault" {
+  value = azurerm_key_vault.Key_vault
+}
+
+
+
+

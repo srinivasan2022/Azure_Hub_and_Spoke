@@ -35,8 +35,8 @@ resource "azurerm_resource_group" "Spoke_03" {
 # }
 
 # Create an App Service Plan
-resource "azurerm_app_service_plan" "example" {
-  name                = "example-appserviceplan"
+resource "azurerm_app_service_plan" "plan" {
+  name                = "appserviceplan"
   location            = azurerm_resource_group.Spoke_03["Spoke_03_RG"].location
   resource_group_name = azurerm_resource_group.Spoke_03["Spoke_03_RG"].name
   sku {
@@ -46,21 +46,21 @@ resource "azurerm_app_service_plan" "example" {
 }
 
 # Create the Web App
-resource "azurerm_app_service" "example" {
+resource "azurerm_app_service" "web_app" {
   name                = "my-webapp1603"
   location            = azurerm_resource_group.Spoke_03["Spoke_03_RG"].location
   resource_group_name = azurerm_resource_group.Spoke_03["Spoke_03_RG"].name
-  app_service_plan_id = azurerm_app_service_plan.example.id
+  app_service_plan_id = azurerm_app_service_plan.plan.id
 
-  site_config {
-    dotnet_framework_version = "v4.0"
-  }
+  # site_config {
+  #   dotnet_framework_version = "v4.0"
+  # }
 
-  app_settings = {
-    "WEBSITE_RUN_FROM_PACKAGE" = "1"
-  }
+  # app_settings = {
+  #   "WEBSITE_RUN_FROM_PACKAGE" = "1"
+  # }
 
-  identity {
-    type = "SystemAssigned"
-  }
+  # identity {
+  #   type = "SystemAssigned"
+  # }
 }

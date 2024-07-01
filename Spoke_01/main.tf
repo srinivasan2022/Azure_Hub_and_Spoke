@@ -88,14 +88,51 @@ resource "azurerm_network_interface" "subnet_nic" {
   depends_on = [ azurerm_virtual_network.Spoke_01_vnet , azurerm_subnet.subnets ]
 }
 
+# Creates the Azure Key vault to store the VM username and password
+resource "azurerm_key_vault" "Key_vault" {
+  name                        = "MyKeyVault1603"
+  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
+  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  sku_name                    = "standard"
+  tenant_id                   = data.azurerm_client_config.current.tenant_id
+  purge_protection_enabled    = true
+  soft_delete_retention_days = 30
+  access_policy {
+    tenant_id = data.azurerm_client_config.current.tenant_id
+    object_id = data.azuread_client_config.current.object_id
+
+    secret_permissions = [
+      "Get",
+      "Set",
+    ]
+  }
+  depends_on = [ azurerm_resource_group.Spoke_01 ]
+}
+
+# Creates the Azure Key vault secret to store the VM username and password
+resource "azurerm_key_vault_secret" "vm_admin_username" {
+  name         = "Spokevmusername"
+  value        = var.admin_username
+  key_vault_id = azurerm_key_vault.Key_vault.id
+  depends_on = [ azurerm_key_vault.Key_vault ]
+}
+
+# Creates the Azure Key vault secret to store the VM username and password
+resource "azurerm_key_vault_secret" "vm_admin_password" {
+  name         = "Spokevmpassword"
+  value        = var.admin_password
+  key_vault_id = azurerm_key_vault.Key_vault.id
+  depends_on = [ azurerm_key_vault.Key_vault ]
+}
+
 # Create the Virtual Machines(VM) in Availability Set and assign the NIC to specific VMs
 resource "azurerm_windows_virtual_machine" "VMs" {
   name                  = "${azurerm_subnet.subnets[local.nsg_names[each.key]].name}-VM"
   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
   location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
   size                  = "Standard_DS1_v2"
-  admin_username        = var.admin_username
-  admin_password        = var.admin_password
+  admin_username        =  azurerm_key_vault_secret.vm_admin_username.value  
+  admin_password        =  azurerm_key_vault_secret.vm_admin_password.value  
   for_each = {for idx , nic in azurerm_network_interface.subnet_nic : idx => nic.id}
   network_interface_ids = [each.value]
    availability_set_id =azurerm_availability_set.av-set.id
@@ -132,37 +169,37 @@ resource "azurerm_storage_share" "example" {
   depends_on = [ azurerm_resource_group.Spoke_01 , azurerm_storage_account.storage-account ]
 }
 
-# Fetch the data from Hub Virtual Network for peering the Spoke_01 Virtual Network (Spoke_01 <--> Hub)
-data "azurerm_virtual_network" "Hub_vnet" {
-  name = "Hub_vnet"
-  resource_group_name = "Hub_RG"
-}
+# # Fetch the data from Hub Virtual Network for peering the Spoke_01 Virtual Network (Spoke_01 <--> Hub)
+# data "azurerm_virtual_network" "Hub_vnet" {
+#   name = "Hub_vnet"
+#   resource_group_name = "Hub_RG"
+# }
 
-# Establish the Peering between Spoke_01 and Hub networks (Spoke_01 <--> Hub)
-resource "azurerm_virtual_network_peering" "Spoke_01-To-Hub" {
-  name                      = "Spoke_01-To-Hub"
-  resource_group_name       = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].resource_group_name
-  virtual_network_name      = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].name
-  remote_virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id
-  allow_virtual_network_access = true
-  allow_forwarded_traffic   = true
-  allow_gateway_transit     = false
-  use_remote_gateways       = false
-  depends_on = [ azurerm_virtual_network.Spoke_01_vnet , data.azurerm_virtual_network.Hub_vnet  ]
-}
+# # Establish the Peering between Spoke_01 and Hub networks (Spoke_01 <--> Hub)
+# resource "azurerm_virtual_network_peering" "Spoke_01-To-Hub" {
+#   name                      = "Spoke_01-To-Hub"
+#   resource_group_name       = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].resource_group_name
+#   virtual_network_name      = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].name
+#   remote_virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id
+#   allow_virtual_network_access = true
+#   allow_forwarded_traffic   = true
+#   allow_gateway_transit     = false
+#   use_remote_gateways       = false
+#   depends_on = [ azurerm_virtual_network.Spoke_01_vnet , data.azurerm_virtual_network.Hub_vnet  ]
+# }
 
-# Establish the Peering between and Hub Spoke_01 networks (Hub <--> Spoke_01)
-resource "azurerm_virtual_network_peering" "Hub-Spoke_01" {
-  name                      = "Hub-Spoke_01"
-  resource_group_name       = data.azurerm_virtual_network.Hub_vnet.resource_group_name
-  virtual_network_name      = data.azurerm_virtual_network.Hub_vnet.name
-  remote_virtual_network_id = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].id
-  allow_virtual_network_access = true
-  allow_forwarded_traffic   = true
-  allow_gateway_transit     = false
-  use_remote_gateways       = false
-  depends_on = [ azurerm_virtual_network.Spoke_01_vnet , data.azurerm_virtual_network.Hub_vnet ]
-}
+# # Establish the Peering between and Hub Spoke_01 networks (Hub <--> Spoke_01)
+# resource "azurerm_virtual_network_peering" "Hub-Spoke_01" {
+#   name                      = "Hub-Spoke_01"
+#   resource_group_name       = data.azurerm_virtual_network.Hub_vnet.resource_group_name
+#   virtual_network_name      = data.azurerm_virtual_network.Hub_vnet.name
+#   remote_virtual_network_id = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].id
+#   allow_virtual_network_access = true
+#   allow_forwarded_traffic   = true
+#   allow_gateway_transit     = false
+#   use_remote_gateways       = false
+#   depends_on = [ azurerm_virtual_network.Spoke_01_vnet , data.azurerm_virtual_network.Hub_vnet ]
+# }
 
 # resource "azurerm_virtual_machine_extension" "vm_extension" {
 #   //for_each = [for vm in azurerm_windows_virtual_machine.VMs : vm.name]

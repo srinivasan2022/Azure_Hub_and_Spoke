@@ -123,82 +123,106 @@ resource "azurerm_application_gateway" "appGW" {
  }
 
 ## VMSS
-resource "azurerm_virtual_machine_scale_set" "vmss" {
+resource "azurerm_windows_virtual_machine_scale_set" "vmss" {
   name                = "myvmss"
   resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
   location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
-  upgrade_policy_mode = "Automatic"
+  sku = "Standard_DS1_v2"
+  instances = 2
+  admin_username = "asdd"
+  admin_password = "pass@word1234"
 
-  sku {
-    name     = "Standard_DS1_v2"
-    tier     = "Standard"
-    capacity = 2
-  }
-
-  network_profile {
-    name    = "my-vmss-nic"
+  # sku {
+  #   name     = "Standard_DS1_v2"
+  #   tier     = "Standard"
+  #   capacity = 2
+  # }
+  network_interface {
+    name = "myvmss"
     primary = true
     ip_configuration {
-      name                                   = "internal"
-      subnet_id                              = azurerm_subnet.subnets["VMSS"].id
-      primary                                = true
-      load_balancer_backend_address_pool_ids = [azurerm_application_gateway.appGW.id]
-    }                                       //[azurerm_application_gateway.example.backend_address_pool[0].id]
+      name = "internal"
+      subnet_id = azurerm_subnet.subnets["VMSS"].id
+      //load_balancer_backend_address_pool_ids =
+      application_gateway_backend_address_pool_ids = [local.application_gateway_backend_address_pool_ids[0]]
+    }
   }
-
-  storage_profile_image_reference {
+  os_disk {
+    caching = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+  source_image_reference {
     publisher = "MicrosoftWindowsServer"
     offer     = "WindowsServer"
     sku       = "2019-Datacenter"
     version   = "latest"
   }
+  # network_profile {
+  #   name    = "my-vmss-nic"
+  #   primary = true
+  #   ip_configuration {
+  #     name                                   = "internal"
+  #     subnet_id                              = azurerm_subnet.subnets["VMSS"].id
+  #     primary                                = true
+  #     load_balancer_backend_address_pool_ids = [azurerm_application_gateway.appGW.id]
+  #   }                                       //[azurerm_application_gateway.example.backend_address_pool[0].id]
+  # }
 
-  storage_profile_os_disk {
-    caching           = "ReadWrite"
-    create_option     = "FromImage"
-    managed_disk_type = "Standard_LRS"
-  }
+  # storage_profile_image_reference {
+  #   publisher = "MicrosoftWindowsServer"
+  #   offer     = "WindowsServer"
+  #   sku       = "2019-Datacenter"
+  #   version   = "latest"
+  # }
 
-  os_profile {
-    computer_name_prefix = "examplevmss"
-    admin_username       = "adminuser"
-    admin_password       = "Password1234!"
-  }
+  # storage_profile_os_disk {
+  #   caching           = "ReadWrite"
+  #   create_option     = "FromImage"
+  #   managed_disk_type = "Standard_LRS"
+  # }
 
-  os_profile_windows_config {}
+  # os_profile {
+  #   computer_name_prefix = "examplevmss"
+  #   admin_username       = "adminuser"
+  #   admin_password       = "Password1234!"
+  # }
+
+  # os_profile_windows_config {
+  #    provision_vm_agent = true
+  # }
 
   depends_on = [azurerm_application_gateway.appGW , azurerm_subnet.subnets]
 }
 
 
-# Fetch the data from Hub Virtual Network for peering the Spoke_02 Virtual Network (Spoke_02 <--> Hub)
-data "azurerm_virtual_network" "Hub_vnet" {
-  name = "Hub_vnet"
-  resource_group_name = "Hub_RG"
-}
+# # Fetch the data from Hub Virtual Network for peering the Spoke_02 Virtual Network (Spoke_02 <--> Hub)
+# data "azurerm_virtual_network" "Hub_vnet" {
+#   name = "Hub_vnet"
+#   resource_group_name = "Hub_RG"
+# }
 
-# Establish the Peering between Spoke_02 and Hub networks (Spoke_02 <--> Hub)
-resource "azurerm_virtual_network_peering" "Spoke_02-To-Hub" {
-  name                      = "Spoke_02-To-Hub"
-  resource_group_name       = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].resource_group_name
-  virtual_network_name      = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].name
-  remote_virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id
-  allow_virtual_network_access = true
-  allow_forwarded_traffic   = true
-  allow_gateway_transit     = false
-  use_remote_gateways       = false
-  depends_on = [ azurerm_virtual_network.Spoke_02_vnet , data.azurerm_virtual_network.Hub_vnet  ]
-}
+# # Establish the Peering between Spoke_02 and Hub networks (Spoke_02 <--> Hub)
+# resource "azurerm_virtual_network_peering" "Spoke_02-To-Hub" {
+#   name                      = "Spoke_02-To-Hub"
+#   resource_group_name       = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].resource_group_name
+#   virtual_network_name      = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].name
+#   remote_virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id
+#   allow_virtual_network_access = true
+#   allow_forwarded_traffic   = true
+#   allow_gateway_transit     = false
+#   use_remote_gateways       = false
+#   depends_on = [ azurerm_virtual_network.Spoke_02_vnet , data.azurerm_virtual_network.Hub_vnet  ]
+# }
 
-# Establish the Peering between and Hub Spoke_01 networks (Hub <--> Spoke_02)
-resource "azurerm_virtual_network_peering" "Hub-Spoke_02" {
-  name                      = "Hub-Spoke_02"
-  resource_group_name       = data.azurerm_virtual_network.Hub_vnet.resource_group_name
-  virtual_network_name      = data.azurerm_virtual_network.Hub_vnet.name
-  remote_virtual_network_id = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].id
-  allow_virtual_network_access = true
-  allow_forwarded_traffic   = true
-  allow_gateway_transit     = false
-  use_remote_gateways       = false
-  depends_on = [ azurerm_virtual_network.Spoke_02_vnet , data.azurerm_virtual_network.Hub_vnet ]
-}
+# # Establish the Peering between and Hub Spoke_01 networks (Hub <--> Spoke_02)
+# resource "azurerm_virtual_network_peering" "Hub-Spoke_02" {
+#   name                      = "Hub-Spoke_02"
+#   resource_group_name       = data.azurerm_virtual_network.Hub_vnet.resource_group_name
+#   virtual_network_name      = data.azurerm_virtual_network.Hub_vnet.name
+#   remote_virtual_network_id = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].id
+#   allow_virtual_network_access = true
+#   allow_forwarded_traffic   = true
+#   allow_gateway_transit     = false
+#   use_remote_gateways       = false
+#   depends_on = [ azurerm_virtual_network.Spoke_02_vnet , data.azurerm_virtual_network.Hub_vnet ]
+# }
