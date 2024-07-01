@@ -7,4 +7,4 @@
 - 6.We should create the Local Network Gateway and Connection service for establish the connection between On_premises and Hub.
 
 ## Architecture Diagram :
-
+![HUB](https://github.com/srinivasan2022/Project/assets/118502121/f530ec72-056d-4b0a-ad59-56d3d16f67c5)

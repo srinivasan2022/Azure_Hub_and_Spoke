@@ -7,7 +7,7 @@
 - 3.The On_premises network establish the connection to Hub network through the internet using VPN Gateway (S2S).
 - 4.The Spoke_01 network establish the connection to Hub network by VNET Peering.
 - 5.The Spoke_02 network establish the connection to Hub network by VNET Peering.
-- 6.The Web app run on Spoke_03 network. 
+- 6.The Spoke_01 should communicates Spoke_02 through Hub network. 
 
 ## Architecture Diagram :
 

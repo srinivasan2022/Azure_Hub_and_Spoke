@@ -122,7 +122,7 @@ resource "azurerm_application_gateway" "appGW" {
     depends_on = [azurerm_resource_group.Spoke_02 ,azurerm_subnet.subnets ,azurerm_public_ip.public_ip]
  }
 
-## VMSS
+## Create windows Virtual Machine Scale Set (VMSS)
 resource "azurerm_windows_virtual_machine_scale_set" "vmss" {
   name                = "myvmss"
   resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name

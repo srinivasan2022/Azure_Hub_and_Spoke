@@ -7,6 +7,7 @@
 - 5.We should create the Local Network Gateway and Connection service for establish the connection between On\_premises and Hub.
 
 ## Architecture Diagram :
+![On\_Premises](https://github.com/srinivasan2022/Project/assets/118502121/8476d917-a19f-4ad5-a6cf-323995f9039e)
 
 ```hcl
 # Create the Resource Group

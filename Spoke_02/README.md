@@ -9,6 +9,7 @@
 - 7.We have to establish the peering between Hub and Spoke\_02.
 
 ## Architecture Diagram :
+![SPOKE\_02](https://github.com/srinivasan2022/Project/assets/118502121/d77db564-7101-4009-a7ca-c757dc5183eb)
 
 ```hcl
 # Create the Resource Group
@@ -135,7 +136,7 @@ resource "azurerm_application_gateway" "appGW" {
     depends_on = [azurerm_resource_group.Spoke_02 ,azurerm_subnet.subnets ,azurerm_public_ip.public_ip]
  }
 
-## VMSS
+## Create windows Virtual Machine Scale Set (VMSS)
 resource "azurerm_windows_virtual_machine_scale_set" "vmss" {
   name                = "myvmss"
   resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
