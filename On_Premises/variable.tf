@@ -6,7 +6,7 @@ variable "rg_details" {
   default = {
     "On_Premises_RG" = {
       rg_name = "On_Premises_RG"
-      rg_location = "East us"
+      rg_location = "central india"
     }
   }
 }

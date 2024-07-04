@@ -199,6 +199,42 @@ resource "azurerm_firewall" "firewall" {
 #   depends_on = [ azurerm_virtual_network_gateway.gateway , azurerm_local_network_gateway.Hub_local_gateway]
 # }
 
+# Creates the policy definition
+resource "azurerm_policy_definition" "rg_policy_def" {
+  name         = "Hub_rg-policy"
+  policy_type  = "Custom"
+  mode         = "All"
+  display_name = "Example Policy"
+  description  = "A policy to demonstrate resource group level policy."
+ 
+  policy_rule = <<POLICY_RULE
+  {
+    "if": {
+      "field": "location",
+      "equals": "East US"
+    },
+    "then": {
+      "effect": "deny"
+    }
+  }
+  POLICY_RULE
+ 
+  metadata = <<METADATA
+  {
+    "category": "General"
+  }
+  METADATA
+}
+ 
+# Assign the policy
+resource "azurerm_policy_assignment" "example" {
+  name                 = "Hub-rg-policy-assignment"
+  policy_definition_id = azurerm_policy_definition.rg_policy_def.id
+  scope                = azurerm_resource_group.Hub["Hub_RG"].id
+  display_name         = "Hub_RG Policy Assignment"
+  description          = "Assigning policy to the resource group"
+}
+
 
 
 

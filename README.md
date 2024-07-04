@@ -8,9 +8,14 @@
 - 4.The Spoke_01 network establish the connection to Hub network by VNET Peering.
 - 5.The Spoke_02 network establish the connection to Hub network by VNET Peering.
 - 6.The Spoke_01 should communicates Spoke_02 through Hub network. 
+- 7.All VMs must have daily backups enabled. 
+- 8.Regional replication must be enabled for all VM backups to ensure data redundancy. 
+- 9.All Azure Policies should be scoped to the Resource Group level. 
+- 10.All VMs should remain private, without public IP addresses.
+- 11.All logs should go to Log Analytic workspace.
 
 ## Architecture Diagram :
-![Overall](https://github.com/srinivasan2022/Project/assets/118502121/bc649cd0-0ad9-434c-b99c-93c5dd49765d)
+![Overall](https://github.com/srinivasan2022/Project/assets/118502121/72d5a2f6-0f7b-4d58-a511-72a846aba13a)
 
 ### 1.On_Premises network :
 

@@ -292,3 +292,51 @@ resource "azurerm_subnet_route_table_association" "example" {
 # PROTECTED_SETTINGS
 # }
 
+# Creates the Log Analytics workspace 
+resource "azurerm_log_analytics_workspace" "log_analytics" {
+  name                = "example-law"
+  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
+  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  sku                 = "PerGB2018"
+  retention_in_days   = 10
+}
+
+# 
+resource "azurerm_monitor_diagnostic_setting" "vnet_monitor" {
+  name               = "diag-settings-vnet"
+  target_resource_id = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.log_analytics.id
+ 
+  log {
+    category = "NetworkSecurityGroupEvent"
+    enabled  = true
+ 
+    retention_policy {
+      enabled = false
+    }
+  }
+}
+ 
+resource "azurerm_monitor_diagnostic_setting" "vm_monitor" {
+  name               = "diag-settings-vm"
+  target_resource_id = azurerm_windows_virtual_machine.VMs[each.key].id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.example.id
+ 
+  log {
+    category = "GuestOSUpdate"
+    enabled  = true
+ 
+    retention_policy {
+      enabled = false
+    }
+  }
+ 
+  metric {
+    category = "AllMetrics"
+    enabled  = true
+ 
+    retention_policy {
+      enabled = false
+    }
+  }
+}
