@@ -24,4 +24,9 @@ output "Key_Vault" {
 
 
 
+output "fileshare" {
+  value = azurerm_storage_share.fileshare
+}
+
+
 

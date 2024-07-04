@@ -111,7 +111,7 @@ resource "azurerm_key_vault" "Key_vault" {
 
 # Creates the Azure Key vault secret to store the VM username and password
 resource "azurerm_key_vault_secret" "vm_admin_username" {
-  name         = "Spokevmusername"
+  name         = "Spokevmsusername"
   value        = var.admin_username
   key_vault_id = azurerm_key_vault.Key_vault.id
   depends_on = [ azurerm_key_vault.Key_vault ]
@@ -119,7 +119,7 @@ resource "azurerm_key_vault_secret" "vm_admin_username" {
 
 # Creates the Azure Key vault secret to store the VM username and password
 resource "azurerm_key_vault_secret" "vm_admin_password" {
-  name         = "Spokevmpassword"
+  name         = "Spokevmspassword"
   value        = var.admin_password
   key_vault_id = azurerm_key_vault.Key_vault.id
   depends_on = [ azurerm_key_vault.Key_vault ]
@@ -162,8 +162,8 @@ resource "azurerm_storage_account" "storage-account" {
 }
  
 # Create the FileShare in Storage account
-resource "azurerm_storage_share" "example" {
-  name                 = "exampleshare"
+resource "azurerm_storage_share" "fileshare" {
+  name                 = "fileshare"
   storage_account_name = azurerm_storage_account.storage-account.name
   quota                = 5
   depends_on = [ azurerm_resource_group.Spoke_01 , azurerm_storage_account.storage-account ]
@@ -201,9 +201,48 @@ resource "azurerm_storage_share" "example" {
 #   depends_on = [ azurerm_virtual_network.Spoke_01_vnet , data.azurerm_virtual_network.Hub_vnet ]
 # }
 
+# Creates the Route tables
+resource "azurerm_route_table" "route_table" {
+  for_each = toset(local.subnet_names)
+  name                = "${each.key}-route-table"//"Hub-route-table"
+  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
+  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  depends_on = [ azurerm_resource_group.Spoke_01 , azurerm_subnet.subnets ]
+}
+
+# Creates the Routes in the route tables
+resource "azurerm_route" "route_01" {
+  name                   = "route-01"
+  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
+  for_each = toset(local.subnet_names)
+  route_table_name = azurerm_route_table.route_table[each.key].name
+  address_prefix         = "0.0.0.0/0"
+  next_hop_type          = "Internet"
+  depends_on = [ azurerm_route_table.route_table ]
+}
+
+# Another route in the route table (example)
+resource "azurerm_route" "route_02" {
+  name                   = "route-02"
+  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
+  for_each = toset(local.subnet_names)
+  route_table_name = azurerm_route_table.route_table[each.key].name
+  address_prefix = "10.30.1.0/24"    // destination ip
+  next_hop_type          = "VirtualAppliance"  //type
+  next_hop_in_ip_address = "10.10.0.4"   // firewall ip
+}
+
+# Associate the route table with the subnet
+resource "azurerm_subnet_route_table_association" "example" {
+  for_each = { for idx , subnet in azurerm_subnet.subnets : idx => subnet.id}
+   subnet_id                 = each.value
+  route_table_id = azurerm_route_table.route_table[local.nsg_names[each.key]].id//[for udr in azurerm_route_table.route_table : udr.id]
+  depends_on = [ azurerm_subnet.subnets , azurerm_route_table.route_table ]
+}
+
 # resource "azurerm_virtual_machine_extension" "vm_extension" {
 #   //for_each = [for vm in azurerm_windows_virtual_machine.VMs : vm.name]
-#   name                 = "${azurerm_windows_virtual_machine.VMs["Web"].name}-vm-ext"
+#   name                 = "${azurerm_windows_virtual_machine.VMs["Web"].name}-extension"
 #   virtual_machine_id   = azurerm_windows_virtual_machine.VMs["Web"].id
 #   publisher            = "Microsoft.Compute"
 #   type                 = "CustomScriptExtension"
@@ -211,8 +250,45 @@ resource "azurerm_storage_share" "example" {
 
 #   settings = <<SETTINGS
 #     {
-#         "commandToExecute": "powershell -ExecutionPolicy Unrestricted -Command \\"$acctName = '${azurerm_storage_account.storage-account.name}'; $acctKey = '${azurerm_storage_account.storage-account.primary_access_key}'; net use Z: \\\\'${azurerm_storage_account.storage-account.name}.file.core.windows.net\\${azurerm_storage_share.example.name} /user:$acctName $acctKey\\""
+#         "commandToExecute": "powershell -ExecutionPolicy Unrestricted -Command \\"$acctName = '${azurerm_storage_account.storage-account.name}'; $acctKey = '${azurerm_storage_account.storage-account.primary_access_key}'; net use Z: \\\\'${azurerm_storage_account.storage-account.name}.file.core.windows.net\\${azurerm_storage_share.fileshare.name} /user:$acctName $acctKey\\""
 #     }
 #   SETTINGS
+# }
+
+# resource "azurerm_virtual_machine_extension" "vm_extension" {
+#   name                 = "${azurerm_windows_virtual_machine.VMs["Web"].name}-extension"
+#   virtual_machine_id =   azurerm_windows_virtual_machine.VMs["Web"].id
+#   publisher            = "Microsoft.Azure.Extensions"
+#   type                 = "CustomScript"
+#   type_handler_version = "2.0"
+ 
+#   settings = <<SETTINGS
+#     {
+#    "commandToExecute": "apt-get update && apt-get install -y cifs-utils && mkdir -p /mnt/fileshare && mount -t cifs //${azurerm_storage_account.storage-account.name}.file.core.windows.net/${azurerm_storage_share.fileshare.name} /mnt/fileshare -o vers=3.0,username=${azurerm_storage_account.storage-account.name},password=${azurerm_storage_account.storage-account.primary_access_key},dir_mode=0777,file_mode=0777,serverino"
+#     }
+#   SETTINGS
+# }
+
+
+# resource "azurerm_virtual_machine_extension" "example" {
+#   name                 = "${azurerm_windows_virtual_machine.VMs["Web"].name}-extension"
+#   virtual_machine_id   = azurerm_windows_virtual_machine.VMs["Web"].id
+#   publisher            = "Microsoft.Compute"
+#   type                 = "CustomScriptExtension"
+#   type_handler_version = "1.10"
+
+#   settings = <<SETTINGS
+#     {
+#         "fileUris": ["https://<your-storage-account-name>.blob.core.windows.net/scripts/mount-fileshare.ps1"],
+#         "commandToExecute": "powershell -ExecutionPolicy Unrestricted -File mount-fileshare.ps1"
+#     }
+# SETTINGS
+
+#   protected_settings = <<PROTECTED_SETTINGS
+#     {
+#         "storageAccountName": "${azurerm_storage_account.storage-account.name}",
+#         "storageAccountKey": "${azurerm_storage_account.storage-account.primary_access_key}"
+#     }
+# PROTECTED_SETTINGS
 # }
 

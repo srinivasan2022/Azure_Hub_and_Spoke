@@ -10,6 +10,7 @@
 - 6.The Spoke_01 should communicates Spoke_02 through Hub network. 
 
 ## Architecture Diagram :
+![Overall](https://github.com/srinivasan2022/Project/assets/118502121/bc649cd0-0ad9-434c-b99c-93c5dd49765d)
 
 ### 1.On_Premises network :
 

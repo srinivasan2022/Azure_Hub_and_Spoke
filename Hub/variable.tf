@@ -43,6 +43,19 @@ variable "subnet_details" {
     "AzureBastionSubnet" = {
         subnet_name = "AzureBastionSubnet"
         address_prefix = "10.10.2.0/24"
+    } 
+  }
+}
+
+variable "appService_subnet" {
+  type = map(object({
+    subnet_name = string
+    address_prefix = string
+  }))
+  default = {
+    "AppServiceSubnet" = {
+      subnet_name = "AppServiceSubnet"
+      address_prefix = "10.10.3.0/27"
     }
   }
 }

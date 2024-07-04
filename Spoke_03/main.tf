@@ -38,16 +38,17 @@ resource "azurerm_app_service" "web_app" {
   depends_on = [ azurerm_resource_group.Spoke_03 , azurerm_app_service_plan.plan ]
 }
 
-# Fetch the Subnet details from Spoke_01 Network
-data "azurerm_subnet" "app_subnet" {
-  name = "App"
-  resource_group_name = "Spoke_01_RG"
-  virtual_network_name = "Spoke_01_vnet"
+# Fetch the Subnet details from Hub Network
+data "azurerm_subnet" "appService_subnet" {
+  name = "AppServiceSubnet"
+  resource_group_name = "Hub_RG"
+  virtual_network_name = "Hub_vnet"
+  
 }
 
 # Enable the Virtual Network Integration to App services
 resource "azurerm_app_service_virtual_network_swift_connection" "example" {
   app_service_id = azurerm_app_service.web_app.id
-  subnet_id = data.azurerm_subnet.app_subnet.id
-  depends_on = [ azurerm_app_service.web_app , data.azurerm_subnet.app_subnet ]
+  subnet_id = data.azurerm_subnet.appService_subnet.id
+  depends_on = [ azurerm_app_service.web_app , data.azurerm_subnet.appService_subnet ]
 }
