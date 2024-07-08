@@ -10,3 +10,4 @@
 - 9.We need to create the Azure Key valut service to store the VM username and password.
 
 ## Architecture Diagram :
+![SPOKE_01](https://github.com/srinivasan2022/Project/assets/118502121/a3b41a1c-9c0b-438d-b86d-bd786109b68a)

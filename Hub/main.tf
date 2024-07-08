@@ -55,20 +55,58 @@ resource "azurerm_public_ip" "public_ips" {
   sku                 = "Standard"
   depends_on = [ azurerm_resource_group.Hub ]
 }
+ 
+ # Create the Network Interface card for Network Virtual Appliances(NVA)
+resource "azurerm_network_interface" "nva_nic" {
+  name                = "nva-NIC"
+  location            = azurerm_resource_group.Hub["Hub_RG"].location
+  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
 
-# # Create the Azure Bastion Host
-# resource "azurerm_bastion_host" "bastion" {
-#   name                = "Bastion"
-#   location            = azurerm_resource_group.Hub["Hub_RG"].location
-#   resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
-#   sku = "Basic"
-#   ip_configuration {
-#     public_ip_address_id = azurerm_public_ip.public_ips["AzureBastionSubnet"].id
-#     name = "example"
-#     subnet_id = azurerm_subnet.subnets["AzureBastionSubnet"].id
-#   }
-#   depends_on = [ azurerm_resource_group.Hub , azurerm_public_ip.public_ips , azurerm_subnet.subnets ]
-# }
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.subnets["NVASubnet"].id
+    private_ip_address_allocation = "Dynamic"
+  }
+  depends_on = [ azurerm_virtual_network.Hub_vnet , azurerm_subnet.subnets ]
+}
+
+# Create the Virtual Machines(VM) and assign the NIC to specific VMs
+resource "azurerm_windows_virtual_machine" "nva" {
+  name = "NVA"
+  location            = azurerm_resource_group.Hub["Hub_RG"].location
+  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+  size                  = "Standard_DS1_v2"
+  admin_username        = var.admin_username
+  admin_password        = var.admin_password
+  network_interface_ids = [azurerm_network_interface.nva_nic.id]
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2019-Datacenter"
+    version   = "latest"
+  }
+  depends_on = [ azurerm_network_interface.nva_nic ]
+}
+
+# Create the Azure Bastion Host
+resource "azurerm_bastion_host" "bastion" {
+  name                = "Bastion"
+  location            = azurerm_resource_group.Hub["Hub_RG"].location
+  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+  sku = "Standard"
+  ip_configuration {
+    public_ip_address_id = azurerm_public_ip.public_ips["AzureBastionSubnet"].id
+    name = "example"
+    subnet_id = azurerm_subnet.subnets["AzureBastionSubnet"].id
+  }
+  depends_on = [ azurerm_resource_group.Hub , azurerm_public_ip.public_ips , azurerm_subnet.subnets ]
+}
 
 resource "azurerm_firewall_policy" "firewall_policy" {
   name                = "example-firewall-policy"
@@ -91,54 +129,78 @@ resource "azurerm_firewall" "firewall" {
     subnet_id            = azurerm_subnet.subnets["AzureFirewallSubnet"].id
     public_ip_address_id = azurerm_public_ip.public_ips["AzureFirewallSubnet"].id
   }
-   firewall_policy_id = azurerm_firewall_policy.firewall_policy.id
+  firewall_policy_id = azurerm_firewall_policy.firewall_policy.id
   depends_on = [ azurerm_resource_group.Hub , azurerm_public_ip.public_ips , 
   azurerm_subnet.subnets , azurerm_firewall_policy.firewall_policy ]
 }
 
-# resource "azurerm_firewall_policy_rule_collection_group" "example" {
-#   name                = "example-rule-collection-group"
-#   firewall_policy_id  = azurerm_firewall_policy.example.id
-#   priority            = 100
- 
-#   network_rule_collection {
-#     name     = "network-rule-collection"
-#     priority = 200
-#     action   = "Allow"
- 
-#     rule {
-#       name                  = "allow-dns"
-#       description           = "Allow DNS"
-#       rule_type             = "NetworkRule"
-#       source_addresses      = ["*"]
-#       destination_addresses = ["*"]
-#       destination_ports     = ["53"]
-#       protocols             = ["UDP", "TCP"]
+# resource "azurerm_firewall_application_rule_collection" "fw_app_rule_collection" {
+#   name                = "example-app-rule"
+#   azure_firewall_name = azurerm_firewall.firewall.name
+#   resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+#   priority            = 200
+#   action              = "Allow"
+
+#   rule {
+#     name                  = "allow-http"
+#     source_addresses      = ["10.20.1.4"]
+#     protocol {
+#       port = 80
+#       type = "Http"
 #     }
-#   }
- 
-#   application_rule_collection {
-#     name     = "application-rule-collection"
-#     priority = 300
-#     action   = "Allow"
- 
-#     rule {
-#       name             = "allow-web"
-#       description      = "Allow Web Access"
-#       source_addresses = ["*"]
-#       protocols {
-#         type = "Http"
-#         port = 80
-#       }
-#       protocols {
-#         type = "Https"
-#         port = 443
-#       }
-#       target_fqdns = ["*"]
+#     protocol {
+#       port = 443
+#       type = "Https"
 #     }
+
+#     target_fqdns = ["microsoft.com"]
 #   }
+#   depends_on = [ azurerm_firewall.firewall , azurerm_firewall_policy.firewall_policy ]
 # }
+
+# Create the Firewall policy rule collection
+resource "azurerm_firewall_policy_rule_collection_group" "fw_policy_rule_collection" {
+  name                = "app-rule-collection-group"
+  firewall_policy_id  = azurerm_firewall_policy.firewall_policy.id
+  priority            = 100
  
+  # network_rule_collection {
+  #   name     = "network-rule-collection"
+  #   priority = 200
+  #   action   = "Allow"
+ 
+  #   rule {
+  #     name                  = "allow-dns"
+  #     description           = "Allow DNS"
+  #     rule_type             = "NetworkRule"
+  #     source_addresses      = ["*"]
+  #     destination_addresses = ["*"]
+  #     destination_ports     = ["53"]
+  #     protocols             = ["UDP", "TCP"]
+  #   }
+  # }
+ 
+  application_rule_collection {       # Create the Application rule collection
+    name     = "application-rule-collection"
+    priority = 300
+    action   = "Allow"
+ 
+    rule {
+      name             = "allow-web"
+      description      = "Allow-Web-Access"
+      source_addresses = ["10.20.1.4"]  # Allow traffic only from [10.20.1.4]
+      protocols {
+        type = "Http"
+        port = 80
+      }
+      protocols {
+        type = "Https"
+        port = 443
+      } 
+      destination_fqdns = ["*.microsoft.com"]  
+    }
+  } 
+}
 
 # # Create the VPN Gateway in their Specified Subnet
 # resource "azurerm_virtual_network_gateway" "gateway" {
@@ -199,41 +261,41 @@ resource "azurerm_firewall" "firewall" {
 #   depends_on = [ azurerm_virtual_network_gateway.gateway , azurerm_local_network_gateway.Hub_local_gateway]
 # }
 
-# Creates the policy definition
-resource "azurerm_policy_definition" "rg_policy_def" {
-  name         = "Hub_rg-policy"
-  policy_type  = "Custom"
-  mode         = "All"
-  display_name = "Example Policy"
-  description  = "A policy to demonstrate resource group level policy."
+# # Creates the policy definition
+# resource "azurerm_policy_definition" "rg_policy_def" {
+#   name         = "Hub_rg-policy"
+#   policy_type  = "Custom"
+#   mode         = "All"
+#   display_name = "Hub Policy"
+#   description  = "A policy to demonstrate resource group level policy."
  
-  policy_rule = <<POLICY_RULE
-  {
-    "if": {
-      "field": "location",
-      "equals": "East US"
-    },
-    "then": {
-      "effect": "deny"
-    }
-  }
-  POLICY_RULE
+#   policy_rule = <<POLICY_RULE
+#   {
+#     "if": {
+#       "field": "location",
+#       "equals": "East US"
+#     },
+#     "then": {
+#       "effect": "deny"
+#     }
+#   }
+#   POLICY_RULE
  
-  metadata = <<METADATA
-  {
-    "category": "General"
-  }
-  METADATA
-}
+#   metadata = <<METADATA
+#   {
+#     "category": "General"
+#   }
+#   METADATA
+# }
  
-# Assign the policy
-resource "azurerm_policy_assignment" "example" {
-  name                 = "Hub-rg-policy-assignment"
-  policy_definition_id = azurerm_policy_definition.rg_policy_def.id
-  scope                = azurerm_resource_group.Hub["Hub_RG"].id
-  display_name         = "Hub_RG Policy Assignment"
-  description          = "Assigning policy to the resource group"
-}
+# # Assign the policy
+# resource "azurerm_policy_assignment" "example" {
+#   name                 = "Hub-rg-policy-assignment"
+#   policy_definition_id = azurerm_policy_definition.rg_policy_def.id
+#   scope                = azurerm_resource_group.Hub["Hub_RG"].id
+#   display_name         = "Hub_RG Policy Assignment"
+#   description          = "Assigning policy to the resource group"
+# }
 
 
 

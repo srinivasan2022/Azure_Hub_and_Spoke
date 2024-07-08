@@ -95,45 +95,40 @@ resource "azurerm_virtual_network_gateway_connection" "vpn_connection" {
 
  # ------------------
 
-# # Create the Network Interface card for Virtual Machines
-# resource "azurerm_network_interface" "subnet_nic" {
-#   for_each = toset(local.subnet_names)
-#   name                = "${each.key}-NIC"
-#   resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
-#   location = azurerm_resource_group.On_Premises["On_Premises_RG"].location
+# Create the Network Interface card for Virtual Machines
+resource "azurerm_network_interface" "subnet_nic" {
+  name                = "DB-NIC"
+  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  location = azurerm_resource_group.On_Premises["On_Premises_RG"].location
 
-#   ip_configuration {
-#     name                          = "internal"
-#     subnet_id                     = azurerm_subnet.subnets[local.subnet_names[each.key]].id
-#     private_ip_address_allocation = "Dynamic"
-#   }
-#   depends_on = [ azurerm_virtual_network.On_Premises_vnet , azurerm_subnet.subnets ]
-# }
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.subnets["DB"].id
+    private_ip_address_allocation = "Dynamic"
+  }
+  depends_on = [ azurerm_virtual_network.On_Premises_vnet , azurerm_subnet.subnets ]
+}
 
-# # Create the Virtual Machines(VM) and assign the NIC to specific VMs
-# resource "azurerm_windows_virtual_machine" "VMs" {
-#   for_each = toset(local.subnet_names)
-#   name = "${each.key}-VM"
-#   //name                  = "${azurerm_subnet.subnets[local.subnet_names[each.key]].name}-VM"
-#   resource_group_name = azurerm_resource_group.Spoke_01["On_Premises_RG"].name
-#   location = azurerm_resource_group.Spoke_01["On_Premises_RG"].location
-#   size                  = "Standard_DS1_v2"
-#   admin_username        = var.admin_username
-#   admin_password        = var.admin_password
-#   //for_each = {for idx , nic in azurerm_network_interface.subnet_nic : idx => nic.id}
-#   network_interface_ids = [azurerm_network_interface.subnet_nic[local.NIC_names[each.key]].id]
-#   //network_interface_ids = [each.value]
+# Create the Virtual Machines(VM) and assign the NIC to specific VM
+resource "azurerm_windows_virtual_machine" "VMs" {
+  name = "DB-VM"
+  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  location = azurerm_resource_group.On_Premises["On_Premises_RG"].location
+  size                  = "Standard_DS1_v2"
+  admin_username        = var.admin_username
+  admin_password        = var.admin_password
+  network_interface_ids = [azurerm_network_interface.subnet_nic.id]
 
-#   os_disk {
-#     caching              = "ReadWrite"
-#     storage_account_type = "Standard_LRS"
-#   }
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
 
-#   source_image_reference {
-#     publisher = "MicrosoftWindowsServer"
-#     offer     = "WindowsServer"
-#     sku       = "2019-Datacenter"
-#     version   = "latest"
-#   }
-#   depends_on = [ azurerm_network_interface.subnet_nic ]
-# }
+  source_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2019-Datacenter"
+    version   = "latest"
+  }
+  depends_on = [ azurerm_network_interface.subnet_nic ]
+}

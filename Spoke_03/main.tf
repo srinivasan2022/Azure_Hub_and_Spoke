@@ -52,3 +52,39 @@ resource "azurerm_app_service_virtual_network_swift_connection" "example" {
   subnet_id = data.azurerm_subnet.appService_subnet.id
   depends_on = [ azurerm_app_service.web_app , data.azurerm_subnet.appService_subnet ]
 }
+
+# # Creates the policy definition
+# resource "azurerm_policy_definition" "rg_policy_def" {
+#   name         = "Spoke03_rg-policy"
+#   policy_type  = "Custom"
+#   mode         = "All"
+#   display_name = "Spoke03 Policy"
+#   description  = "A policy to demonstrate resource group level policy."
+ 
+#   policy_rule = <<POLICY_RULE
+#   {
+#     "if": {
+#       "field": "location",
+#       "equals": "East US"
+#     },
+#     "then": {
+#       "effect": "deny"
+#     }
+#   }
+#   POLICY_RULE
+ 
+#   metadata = <<METADATA
+#   {
+#     "category": "General"
+#   }
+#   METADATA
+# }
+ 
+# # Assign the policy
+# resource "azurerm_policy_assignment" "example" {
+#   name                 = "Spoke03-rg-policy-assignment"
+#   policy_definition_id = azurerm_policy_definition.rg_policy_def.id
+#   scope                = azurerm_resource_group.Spoke_01["Spoke_03_RG"].id
+#   display_name         = "Spoke03_RG Policy Assignment"
+#   description          = "Assigning policy to the resource group"
+# }

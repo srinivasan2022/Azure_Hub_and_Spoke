@@ -43,7 +43,12 @@ variable "subnet_details" {
     "AzureBastionSubnet" = {
         subnet_name = "AzureBastionSubnet"
         address_prefix = "10.10.2.0/24"
-    } 
+    },
+
+    "NVASubnet" = {
+      subnet_name = "NVASubnet"
+      address_prefix = "10.10.4.0/24"
+    }
   }
 }
 
@@ -58,4 +63,15 @@ variable "appService_subnet" {
       address_prefix = "10.10.3.0/27"
     }
   }
+}
+
+variable "admin_username" {
+  type        = string
+  default = "azureuser"
+}
+
+variable "admin_password" {
+  type        = string
+  default = "pass@word1234"
+  sensitive   = true
 }

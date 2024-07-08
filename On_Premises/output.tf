@@ -14,6 +14,6 @@ output "Public_ips" {
  value = azurerm_public_ip.public_ips
 }
 
-output "VPN_Gateway" {
- value = azurerm_virtual_network_gateway.gateway
-}
+# output "VPN_Gateway" {
+#  value = azurerm_virtual_network_gateway.gateway
+# }

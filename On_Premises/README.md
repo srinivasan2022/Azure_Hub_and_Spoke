@@ -107,48 +107,43 @@ resource "azurerm_virtual_network_gateway_connection" "vpn_connection" {
 
  # ------------------
 
-# # Create the Network Interface card for Virtual Machines
-# resource "azurerm_network_interface" "subnet_nic" {
-#   for_each = toset(local.subnet_names)
-#   name                = "${each.key}-NIC"
-#   resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
-#   location = azurerm_resource_group.On_Premises["On_Premises_RG"].location
+# Create the Network Interface card for Virtual Machines
+resource "azurerm_network_interface" "subnet_nic" {
+  name                = "DB-NIC"
+  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  location = azurerm_resource_group.On_Premises["On_Premises_RG"].location
 
-#   ip_configuration {
-#     name                          = "internal"
-#     subnet_id                     = azurerm_subnet.subnets[local.subnet_names[each.key]].id
-#     private_ip_address_allocation = "Dynamic"
-#   }
-#   depends_on = [ azurerm_virtual_network.On_Premises_vnet , azurerm_subnet.subnets ]
-# }
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.subnets["DB"].id
+    private_ip_address_allocation = "Dynamic"
+  }
+  depends_on = [ azurerm_virtual_network.On_Premises_vnet , azurerm_subnet.subnets ]
+}
 
-# # Create the Virtual Machines(VM) and assign the NIC to specific VMs
-# resource "azurerm_windows_virtual_machine" "VMs" {
-#   for_each = toset(local.subnet_names)
-#   name = "${each.key}-VM"
-#   //name                  = "${azurerm_subnet.subnets[local.subnet_names[each.key]].name}-VM"
-#   resource_group_name = azurerm_resource_group.Spoke_01["On_Premises_RG"].name
-#   location = azurerm_resource_group.Spoke_01["On_Premises_RG"].location
-#   size                  = "Standard_DS1_v2"
-#   admin_username        = var.admin_username
-#   admin_password        = var.admin_password
-#   //for_each = {for idx , nic in azurerm_network_interface.subnet_nic : idx => nic.id}
-#   network_interface_ids = [azurerm_network_interface.subnet_nic[local.NIC_names[each.key]].id]
-#   //network_interface_ids = [each.value]
+# Create the Virtual Machines(VM) and assign the NIC to specific VM
+resource "azurerm_windows_virtual_machine" "VMs" {
+  name = "DB-VM"
+  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  location = azurerm_resource_group.On_Premises["On_Premises_RG"].location
+  size                  = "Standard_DS1_v2"
+  admin_username        = var.admin_username
+  admin_password        = var.admin_password
+  network_interface_ids = [azurerm_network_interface.subnet_nic.id]
 
-#   os_disk {
-#     caching              = "ReadWrite"
-#     storage_account_type = "Standard_LRS"
-#   }
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
 
-#   source_image_reference {
-#     publisher = "MicrosoftWindowsServer"
-#     offer     = "WindowsServer"
-#     sku       = "2019-Datacenter"
-#     version   = "latest"
-#   }
-#   depends_on = [ azurerm_network_interface.subnet_nic ]
-# }
+  source_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2019-Datacenter"
+    version   = "latest"
+  }
+  depends_on = [ azurerm_network_interface.subnet_nic ]
+}
 ```
 
 <!-- markdownlint-disable MD033 -->
@@ -171,12 +166,14 @@ The following providers are used by this module:
 The following resources are used by this module:
 
 - [azurerm_local_network_gateway.OnPremises_local_gateway](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/local_network_gateway) (resource)
+- [azurerm_network_interface.subnet_nic](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_interface) (resource)
 - [azurerm_public_ip.public_ips](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/public_ip) (resource)
 - [azurerm_resource_group.On_Premises](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) (resource)
 - [azurerm_subnet.subnets](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet) (resource)
 - [azurerm_virtual_network.On_Premises_vnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network) (resource)
 - [azurerm_virtual_network_gateway.gateway](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_gateway) (resource)
 - [azurerm_virtual_network_gateway_connection.vpn_connection](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_gateway_connection) (resource)
+- [azurerm_windows_virtual_machine.VMs](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/windows_virtual_machine) (resource)
 - [azurerm_public_ip.Hub-VPN-GW-public-ip](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/public_ip) (data source)
 - [azurerm_virtual_network.Hub_vnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/virtual_network) (data source)
 
@@ -223,7 +220,7 @@ Default:
 ```json
 {
   "On_Premises_RG": {
-    "rg_location": "East us",
+    "rg_location": "central india",
     "rg_name": "On_Premises_RG"
   }
 }
@@ -298,10 +295,6 @@ Description: n/a
 Description: n/a
 
 ### <a name="output_Subnet_details"></a> [Subnet\_details](#output\_Subnet\_details)
-
-Description: n/a
-
-### <a name="output_VPN_Gateway"></a> [VPN\_Gateway](#output\_VPN\_Gateway)
 
 Description: n/a
 

@@ -122,6 +122,66 @@ resource "azurerm_application_gateway" "appGW" {
     depends_on = [azurerm_resource_group.Spoke_02 ,azurerm_subnet.subnets ,azurerm_public_ip.public_ip]
  }
 
+# resource "azurerm_application_gateway" "appGW" {
+#   name                = "App-Gateway"
+#   resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
+#   location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
+#   sku {
+#     name     = "Standard_v2"
+#     tier     = "Standard_v2"
+#     capacity = 2
+#   }
+ 
+#   gateway_ip_configuration {
+#     name      = "appGatewayIpConfig"
+#     subnet_id = azurerm_subnet.subnets["App-GW"].id
+#   }
+ 
+#   frontend_ip_configuration {
+#     name                 = "appGatewayFrontendIP"
+#     public_ip_address_id = azurerm_public_ip.public_ip.id
+#   }
+ 
+#   frontend_port {
+#     name = "appGatewayFrontendPort"
+#     port = 443
+#   }
+ 
+#   ssl_certificate {
+#     name                = "examplecert"
+#     key_vault_secret_id = azurerm_key_vault_certificate.example.secret_id
+#   }
+ 
+#   http_listener {
+#     name                           = "appGatewayListener"
+#     frontend_ip_configuration_name = "appGatewayFrontendIP"
+#     frontend_port_name             = "appGatewayFrontendPort"
+#     protocol                       = "Https"
+#     ssl_certificate_name           = "examplecert"
+#   }
+ 
+#   backend_address_pool {
+#     name = "appGatewayBackendPool"
+#   }
+ 
+#   backend_http_settings {
+#     name                  = "appGatewayBackendHttpSettings"
+#     cookie_based_affinity = "Disabled"
+#     port                  = 80
+#     protocol              = "Http"
+#     request_timeout       = 20
+#   }
+ 
+#   request_routing_rule {
+#     name                       = "appGatewayRule"
+#     rule_type                  = "Basic"
+#     http_listener_name         = "appGatewayListener"
+#     backend_address_pool_name  = "appGatewayBackendPool"
+#     backend_http_settings_name = "appGatewayBackendHttpSettings"
+#   }
+# }
+ 
+
 ## Create windows Virtual Machine Scale Set (VMSS)
 resource "azurerm_windows_virtual_machine_scale_set" "vmss" {
   name                = "myvmss"
@@ -129,8 +189,8 @@ resource "azurerm_windows_virtual_machine_scale_set" "vmss" {
   location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
   sku = "Standard_DS1_v2"
   instances = 2
-  admin_username = "asdd"
-  admin_password = "pass@word1234"
+  admin_username = var.admin_username
+  admin_password = var.admin_password
 
   # sku {
   #   name     = "Standard_DS1_v2"
@@ -143,7 +203,6 @@ resource "azurerm_windows_virtual_machine_scale_set" "vmss" {
     ip_configuration {
       name = "internal"
       subnet_id = azurerm_subnet.subnets["VMSS"].id
-      //load_balancer_backend_address_pool_ids =
       application_gateway_backend_address_pool_ids = [local.application_gateway_backend_address_pool_ids[0]]
     }
   }
@@ -190,39 +249,124 @@ resource "azurerm_windows_virtual_machine_scale_set" "vmss" {
   # os_profile_windows_config {
   #    provision_vm_agent = true
   # }
-
-  depends_on = [azurerm_application_gateway.appGW , azurerm_subnet.subnets]
 }
 
 
-# # Fetch the data from Hub Virtual Network for peering the Spoke_02 Virtual Network (Spoke_02 <--> Hub)
-# data "azurerm_virtual_network" "Hub_vnet" {
-#   name = "Hub_vnet"
-#   resource_group_name = "Hub_RG"
+# Fetch the data from Hub Virtual Network for peering the Spoke_02 Virtual Network (Spoke_02 <--> Hub)
+data "azurerm_virtual_network" "Hub_vnet" {
+  name = "Hub_vnet"
+  resource_group_name = "Hub_RG"
+}
+
+# Establish the Peering between Spoke_02 and Hub networks (Spoke_02 <--> Hub)
+resource "azurerm_virtual_network_peering" "Spoke_02-To-Hub" {
+  name                      = "Spoke_02-To-Hub"
+  resource_group_name       = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].resource_group_name
+  virtual_network_name      = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].name
+  remote_virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id
+  allow_virtual_network_access = true
+  allow_forwarded_traffic   = true
+  allow_gateway_transit     = false
+  use_remote_gateways       = false
+  depends_on = [ azurerm_virtual_network.Spoke_02_vnet , data.azurerm_virtual_network.Hub_vnet  ]
+}
+
+# Establish the Peering between and Hub Spoke_01 networks (Hub <--> Spoke_02)
+resource "azurerm_virtual_network_peering" "Hub-Spoke_02" {
+  name                      = "Hub-Spoke_02"
+  resource_group_name       = data.azurerm_virtual_network.Hub_vnet.resource_group_name
+  virtual_network_name      = data.azurerm_virtual_network.Hub_vnet.name
+  remote_virtual_network_id = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].id
+  allow_virtual_network_access = true
+  allow_forwarded_traffic   = true
+  allow_gateway_transit     = false
+  use_remote_gateways       = false
+  depends_on = [ azurerm_virtual_network.Spoke_02_vnet , data.azurerm_virtual_network.Hub_vnet ]
+}
+
+
+# Creates the Route tables
+resource "azurerm_route_table" "route_table" {
+  name                = "Spoke02-route-table"
+  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
+  location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
+  depends_on = [ azurerm_resource_group.Spoke_02 , azurerm_subnet.subnets ]
+}
+
+# # Creates the Routes in the route tables
+# resource "azurerm_route" "route_01" {
+#   name                   = "route-01"
+#   resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
+#   for_each = toset(local.subnet_names)
+#   route_table_name = azurerm_route_table.route_table.name
+#   address_prefix         = "0.0.0.0/0"
+#   next_hop_type          = "Internet"
+#   depends_on = [ azurerm_route_table.route_table ]
 # }
 
-# # Establish the Peering between Spoke_02 and Hub networks (Spoke_02 <--> Hub)
-# resource "azurerm_virtual_network_peering" "Spoke_02-To-Hub" {
-#   name                      = "Spoke_02-To-Hub"
-#   resource_group_name       = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].resource_group_name
-#   virtual_network_name      = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].name
-#   remote_virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id
-#   allow_virtual_network_access = true
-#   allow_forwarded_traffic   = true
-#   allow_gateway_transit     = false
-#   use_remote_gateways       = false
-#   depends_on = [ azurerm_virtual_network.Spoke_02_vnet , data.azurerm_virtual_network.Hub_vnet  ]
+# Creates the route in the route table (Spoke02-NVA-Spoke01)
+resource "azurerm_route" "route_02" {
+  name                   = "ToSpoke01"
+  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
+  route_table_name = azurerm_route_table.route_table.name
+  address_prefix = "10.20.0.0/16"    # destination network address space
+  next_hop_type          = "VirtualAppliance" 
+  next_hop_in_ip_address = "10.10.4.4"   # NVA private IP
+  depends_on = [ azurerm_route_table.route_table ]
+}
+
+# Creates the route in the route tables (Spoke02-To-Firewall)
+resource "azurerm_route" "route_03" {
+  name                   = "ToFirewall"
+  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
+  route_table_name = azurerm_route_table.route_table.name
+  address_prefix         = "0.0.0.0/0"   # All Traffic
+  next_hop_type          = "VirtualAppliance"
+  next_hop_in_ip_address = "10.10.0.4"  # Firewall private IP
+  depends_on = [ azurerm_route_table.route_table ]
+}
+
+# Associate the route table with the subnet
+resource "azurerm_subnet_route_table_association" "example" {
+   subnet_id                 = azurerm_subnet.subnets["VMSS"].id
+  route_table_id = azurerm_route_table.route_table.id
+  depends_on = [ azurerm_subnet.subnets , azurerm_route_table.route_table ]
+}
+
+# # Creates the policy definition
+# resource "azurerm_policy_definition" "rg_policy_def" {
+#   name         = "Spoke02_rg-policy"
+#   policy_type  = "Custom"
+#   mode         = "All"
+#   display_name = "Spoke02 Policy"
+#   description  = "A policy to demonstrate resource group level policy."
+ 
+#   policy_rule = <<POLICY_RULE
+#   {
+#     "if": {
+#       "field": "location",
+#       "equals": "East US"
+#     },
+#     "then": {
+#       "effect": "deny"
+#     }
+#   }
+#   POLICY_RULE
+ 
+#   metadata = <<METADATA
+#   {
+#     "category": "General"
+#   }
+#   METADATA
+# }
+ 
+# # Assign the policy
+# resource "azurerm_policy_assignment" "example" {
+#   name                 = "Spoke02-rg-policy-assignment"
+#   policy_definition_id = azurerm_policy_definition.rg_policy_def.id
+#   scope                = azurerm_resource_group.Spoke_01["Spoke_02_RG"].id
+#   display_name         = "Spoke02_RG Policy Assignment"
+#   description          = "Assigning policy to the resource group"
 # }
 
-# # Establish the Peering between and Hub Spoke_01 networks (Hub <--> Spoke_02)
-# resource "azurerm_virtual_network_peering" "Hub-Spoke_02" {
-#   name                      = "Hub-Spoke_02"
-#   resource_group_name       = data.azurerm_virtual_network.Hub_vnet.resource_group_name
-#   virtual_network_name      = data.azurerm_virtual_network.Hub_vnet.name
-#   remote_virtual_network_id = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].id
-#   allow_virtual_network_access = true
-#   allow_forwarded_traffic   = true
-#   allow_gateway_transit     = false
-#   use_remote_gateways       = false
-#   depends_on = [ azurerm_virtual_network.Spoke_02_vnet , data.azurerm_virtual_network.Hub_vnet ]
-# }
+

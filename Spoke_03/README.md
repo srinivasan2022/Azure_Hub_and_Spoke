@@ -48,19 +48,56 @@ resource "azurerm_app_service" "web_app" {
   depends_on = [ azurerm_resource_group.Spoke_03 , azurerm_app_service_plan.plan ]
 }
 
-# Fetch the Subnet details from Spoke_01 Network
-data "azurerm_subnet" "app_subnet" {
-  name = "App"
-  resource_group_name = "Spoke_01_RG"
-  virtual_network_name = "Spoke_01_vnet"
+# Fetch the Subnet details from Hub Network
+data "azurerm_subnet" "appService_subnet" {
+  name = "AppServiceSubnet"
+  resource_group_name = "Hub_RG"
+  virtual_network_name = "Hub_vnet"
+  
 }
 
 # Enable the Virtual Network Integration to App services
 resource "azurerm_app_service_virtual_network_swift_connection" "example" {
   app_service_id = azurerm_app_service.web_app.id
-  subnet_id = data.azurerm_subnet.app_subnet.id
-  depends_on = [ azurerm_app_service.web_app , data.azurerm_subnet.app_subnet ]
+  subnet_id = data.azurerm_subnet.appService_subnet.id
+  depends_on = [ azurerm_app_service.web_app , data.azurerm_subnet.appService_subnet ]
 }
+
+# # Creates the policy definition
+# resource "azurerm_policy_definition" "rg_policy_def" {
+#   name         = "Spoke03_rg-policy"
+#   policy_type  = "Custom"
+#   mode         = "All"
+#   display_name = "Spoke03 Policy"
+#   description  = "A policy to demonstrate resource group level policy."
+ 
+#   policy_rule = <<POLICY_RULE
+#   {
+#     "if": {
+#       "field": "location",
+#       "equals": "East US"
+#     },
+#     "then": {
+#       "effect": "deny"
+#     }
+#   }
+#   POLICY_RULE
+ 
+#   metadata = <<METADATA
+#   {
+#     "category": "General"
+#   }
+#   METADATA
+# }
+ 
+# # Assign the policy
+# resource "azurerm_policy_assignment" "example" {
+#   name                 = "Spoke03-rg-policy-assignment"
+#   policy_definition_id = azurerm_policy_definition.rg_policy_def.id
+#   scope                = azurerm_resource_group.Spoke_01["Spoke_03_RG"].id
+#   display_name         = "Spoke03_RG Policy Assignment"
+#   description          = "Assigning policy to the resource group"
+# }
 ```
 
 <!-- markdownlint-disable MD033 -->
@@ -86,7 +123,7 @@ The following resources are used by this module:
 - [azurerm_app_service_plan.plan](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service_plan) (resource)
 - [azurerm_app_service_virtual_network_swift_connection.example](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service_virtual_network_swift_connection) (resource)
 - [azurerm_resource_group.Spoke_03](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) (resource)
-- [azurerm_subnet.app_subnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/subnet) (data source)
+- [azurerm_subnet.appService_subnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/subnet) (data source)
 
 <!-- markdownlint-disable MD013 -->
 ## Required Inputs

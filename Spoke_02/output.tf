@@ -18,6 +18,3 @@ output "AppGW" {
   value = azurerm_application_gateway.appGW
 }
 
-output "VMSS" {
-  value = azurerm_windows_virtual_machine_scale_set.vmss
-}
