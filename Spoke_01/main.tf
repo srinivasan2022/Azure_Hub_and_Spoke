@@ -61,17 +61,17 @@ resource "azurerm_subnet_network_security_group_association" "nsg_ass" {
   depends_on = [ azurerm_network_security_group.nsg ]
 }
 
-# Create the Availability Set for High availability
-resource "azurerm_availability_set" "av-set" {
-  name                = "av-set"
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+# # Create the Availability Set for High availability
+# resource "azurerm_availability_set" "av-set" {
+#   name                = "av-set"
+#   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
+#   location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
  
-  managed            = true
-  platform_fault_domain_count = 2
-  platform_update_domain_count = 2
-  depends_on = [ azurerm_resource_group.Spoke_01 ]
-}
+#   managed            = true
+#   platform_fault_domain_count = 2
+#   platform_update_domain_count = 2
+#   depends_on = [ azurerm_resource_group.Spoke_01 ]
+# }
 
 # Create the Network Interface card for Virtual Machines
 resource "azurerm_network_interface" "subnet_nic" {
@@ -79,7 +79,7 @@ resource "azurerm_network_interface" "subnet_nic" {
   name                = "${each.key}-NIC"
   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
   location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
-
+  
   ip_configuration {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.subnets[local.nsg_names[each.key]].id
@@ -111,7 +111,7 @@ resource "azurerm_key_vault" "Key_vault" {
 
 # Creates the Azure Key vault secret to store the VM username and password
 resource "azurerm_key_vault_secret" "vm_admin_username" {
-  name         = "Spokevirtualmachineusername"
+  name         = "Spokevmvirtualmachineusername"
   value        = var.admin_username
   key_vault_id = azurerm_key_vault.Key_vault.id
   depends_on = [ azurerm_key_vault.Key_vault ]
@@ -119,7 +119,7 @@ resource "azurerm_key_vault_secret" "vm_admin_username" {
 
 # Creates the Azure Key vault secret to store the VM username and password
 resource "azurerm_key_vault_secret" "vm_admin_password" {
-  name         = "Spokevirtualmachinepassword"
+  name         = "Spokevmvirtualmachinepassword"
   value        = var.admin_password
   key_vault_id = azurerm_key_vault.Key_vault.id
   depends_on = [ azurerm_key_vault.Key_vault ]
@@ -127,15 +127,20 @@ resource "azurerm_key_vault_secret" "vm_admin_password" {
 
 # Create the Virtual Machines(VM) in Availability Set and assign the NIC to specific VMs
 resource "azurerm_windows_virtual_machine" "VMs" {
+  # count = 2
   name                  = "${azurerm_subnet.subnets[local.nsg_names[each.key]].name}-VM"
   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
   location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
   size                  = "Standard_DS1_v2"
-  admin_username        =  azurerm_key_vault_secret.vm_admin_username.value  
-  admin_password        =  azurerm_key_vault_secret.vm_admin_password.value  
+  # admin_username        =  azurerm_key_vault_secret.vm_admin_username.value  
+  # admin_password        =  azurerm_key_vault_secret.vm_admin_password.value  
+  admin_username = var.admin_username
+  admin_password = var.admin_password
   for_each = {for idx , nic in azurerm_network_interface.subnet_nic : idx => nic.id}
   network_interface_ids = [each.value]
-   availability_set_id =azurerm_availability_set.av-set.id
+  # zone = [count.index+1] # 1 2
+  # zone = [[for i in range(1,length(azurerm_network_interface.subnet_nic)+1) : i]]
+  
 
   os_disk {
     caching              = "ReadWrite"
@@ -148,7 +153,14 @@ resource "azurerm_windows_virtual_machine" "VMs" {
     sku       = "2019-Datacenter"
     version   = "latest"
   }
-  depends_on = [ azurerm_network_interface.subnet_nic ]
+
+  custom_data = base64encode(templatefile("scripts/mount-fileshare.ps1", {
+    storage_account_name = azurerm_storage_account.storage-account.name
+    share_name           = azurerm_storage_share.fileshare.name
+    storage_account_key  = azurerm_storage_account.storage-account.primary_access_key
+  }))
+
+  depends_on = [ azurerm_network_interface.subnet_nic , azurerm_storage_share.fileshare ]
 }
 
 # Create the Storage account for FileShare
@@ -161,12 +173,58 @@ resource "azurerm_storage_account" "storage-account" {
   depends_on = [ azurerm_resource_group.Spoke_01  ]
 }
  
-# # Create the FileShare in Storage account
-# resource "azurerm_storage_share" "fileshare" {
-#   name                 = "fileshare01"
-#   storage_account_name = azurerm_storage_account.storage-account.name
-#   quota                = 5
-#   depends_on = [ azurerm_resource_group.Spoke_01 , azurerm_storage_account.storage-account ]
+# Create the FileShare in Storage account
+resource "azurerm_storage_share" "fileshare" {
+  name                 = "fileshare01"
+  storage_account_name = azurerm_storage_account.storage-account.name
+  quota                = 5
+  depends_on = [ azurerm_resource_group.Spoke_01 , azurerm_storage_account.storage-account ]
+}
+
+data "template_file" "mount_fileshare" {
+  template = file("scripts/mount-fileshare.ps1")
+ 
+  vars = {
+  storage_account_name = azurerm_storage_account.storage-account.name
+  share_name = azurerm_storage_share.fileshare.name
+  storage_account_key  = azurerm_storage_account.storage-account.primary_access_key
+  }
+}
+
+
+resource "azurerm_virtual_machine_extension" "example" {
+  name                 = "customScript"
+  virtual_machine_id = azurerm_windows_virtual_machine.VMs["Web-01"].id
+  publisher            = "Microsoft.Compute"
+  type                 = "CustomScriptExtension"
+  type_handler_version = "1.10"
+  
+  settings = <<SETTINGS
+   {
+     "commandToExecute": "${data.template_file.mount_fileshare.rendered}"
+   }
+   SETTINGS
+
+}
+  
+# # Create the data disk
+# resource "azurerm_managed_disk" "data_disk" {
+#   name                 = "vm-datadisk"
+#   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
+#   location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+#   storage_account_type = "Standard_LRS"
+#   create_option        = "Empty"
+#   disk_size_gb         = "4"
+#   depends_on = [ azurerm_windows_virtual_machine.VMs ]
+# }
+
+# # Attach the data disk to the virtual machine
+# resource "azurerm_virtual_machine_data_disk_attachment" "example_attach" {
+#   managed_disk_id    = azurerm_managed_disk.data_disk.id
+#   virtual_machine_id = azurerm_windows_virtual_machine.VMs["Web-01"].id
+#   lun                = 0
+#   caching            = "ReadWrite"
+#   depends_on = [ azurerm_windows_virtual_machine.VMs , azurerm_managed_disk.data_disk ]
 # }
 
 # Fetch the data from Hub Virtual Network for peering the Spoke_01 Virtual Network (Spoke_01 <--> Hub)
@@ -183,7 +241,7 @@ resource "azurerm_virtual_network_peering" "Spoke_01-To-Hub" {
   remote_virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id
   allow_virtual_network_access = true
   allow_forwarded_traffic   = true
-  allow_gateway_transit     = false
+  allow_gateway_transit     = true
   use_remote_gateways       = false
   depends_on = [ azurerm_virtual_network.Spoke_01_vnet , data.azurerm_virtual_network.Hub_vnet  ]
 }
@@ -197,74 +255,20 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_01" {
   allow_virtual_network_access = true
   allow_forwarded_traffic   = true
   allow_gateway_transit     = false
-  use_remote_gateways       = false
+  use_remote_gateways       = true
   depends_on = [ azurerm_virtual_network.Spoke_01_vnet , data.azurerm_virtual_network.Hub_vnet ]
 }
 
-resource "azurerm_route_table" "route_table" {
-  name                = "Spoke01-route-table"
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
-  depends_on = [ azurerm_resource_group.Spoke_01 , azurerm_subnet.subnets ]
-}
 
-# Creates the route in the route table (Spoke01-NVA-Spoke02)
-resource "azurerm_route" "route_02" {
-  name                   = "ToSpoke02"
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  route_table_name = azurerm_route_table.route_table.name
-  address_prefix = "10.30.0.0/16"     # destnation network address space
-  next_hop_type          = "VirtualAppliance" 
-  next_hop_in_ip_address = "10.10.4.4"   # NVA private IP
-  depends_on = [ azurerm_route_table.route_table ]
-}
-
-# Creates the route in the route tables (Spoke01-To-Firewall)
-resource "azurerm_route" "route_03" {
-  name                   = "ToFirewall"
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  route_table_name = azurerm_route_table.route_table.name
-  address_prefix         = "0.0.0.0/0"     # All Traffic
-  next_hop_type          = "VirtualAppliance"
-  next_hop_in_ip_address = "10.10.0.4"     # Firewall private IP
-  depends_on = [ azurerm_route_table.route_table ]
-}
-
-# Associate the route table with the subnet
-resource "azurerm_subnet_route_table_association" "example" {
-   subnet_id                 = azurerm_subnet.subnets["Web"].id
-  route_table_id = azurerm_route_table.route_table.id
-  depends_on = [ azurerm_subnet.subnets , azurerm_route_table.route_table ]
-}
-
-# # Creates the Routes in the route tables
-# resource "azurerm_route" "route_01" {
-#   name                   = "route-01"
+# # Creates the route in the route tables (Spoke01-To-Firewall)
+# resource "azurerm_route" "route_03" {
+#   name                   = "ToFirewall"
 #   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-#   for_each = toset(local.subnet_names)
-#   route_table_name = azurerm_route_table.route_table[each.key].name
-#   address_prefix         = "0.0.0.0/0"
-#   next_hop_type          = "Internet"
+#   route_table_name = azurerm_route_table.route_table.name
+#   address_prefix         = "0.0.0.0/0"     # All Traffic
+#   next_hop_type          = "VirtualAppliance"
+#   next_hop_in_ip_address = "10.10.0.4"     # Firewall private IP
 #   depends_on = [ azurerm_route_table.route_table ]
-# }
-
-# # Another route in the route table (example)
-# resource "azurerm_route" "route_02" {
-#   name                   = "route-02"
-#   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-#   for_each = toset(local.subnet_names)
-#   route_table_name = azurerm_route_table.route_table[each.key].name
-#   address_prefix = "10.30.0.0/16"    // destination vnet ip
-#   next_hop_type          = "VirtualAppliance"  //type
-#   next_hop_in_ip_address = "10.10.4.4"   // nva ip
-# }
-
-# # Associate the route table with the subnet
-# resource "azurerm_subnet_route_table_association" "example" {
-#   for_each = { for idx , subnet in azurerm_subnet.subnets : idx => subnet.id}
-#    subnet_id                 = each.value
-#   route_table_id = azurerm_route_table.route_table[local.nsg_names[each.key]].id//[for udr in azurerm_route_table.route_table : udr.id]
-#   depends_on = [ azurerm_subnet.subnets , azurerm_route_table.route_table ]
 # }
 
 # resource "azurerm_virtual_machine_extension" "vm_extension" {

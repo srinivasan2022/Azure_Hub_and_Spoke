@@ -27,7 +27,7 @@ resource "azurerm_subnet" "subnets" {
 
 # Create the Public IP for VPN Gateway 
 resource "azurerm_public_ip" "public_ips" {
-  name = "OnPremise-VPN-${azurerm_subnet.subnets["GatewaySubnet"].name}-IP"
+  name = "OnPremise-VPN-${azurerm_subnet.subnets["GatewaySubnet"].name}-IP"  
   location            = azurerm_resource_group.On_Premises["On_Premises_RG"].location
   resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
   allocation_method   = "Static"
@@ -49,7 +49,7 @@ resource "azurerm_virtual_network_gateway" "gateway" {
  
   ip_configuration {
     name                = "vnetGatewayConfig"
-    public_ip_address_id = azurerm_public_ip.public_ips["GatewaySubnet"].id
+    public_ip_address_id = azurerm_public_ip.public_ips.id
     private_ip_address_allocation = "Dynamic"
     subnet_id = azurerm_subnet.subnets["GatewaySubnet"].id
   }
@@ -103,20 +103,38 @@ resource "azurerm_network_interface" "subnet_nic" {
 
   ip_configuration {
     name                          = "internal"
-    subnet_id                     = azurerm_subnet.subnets["DB"].id
+    subnet_id                     = azurerm_subnet.subnets["OnPremSubnet"].id
     private_ip_address_allocation = "Dynamic"
   }
   depends_on = [ azurerm_virtual_network.On_Premises_vnet , azurerm_subnet.subnets ]
 }
 
+# Fetch the data from key vault
+data "azurerm_key_vault" "Key_vault" {
+  name                = "MyKeyVault1603"
+  resource_group_name = "Spoke_01_RG"
+}
+
+# Get the username from key vault secret store
+data "azurerm_key_vault_secret" "vm_admin_username" {
+  name         = "Spokevmvirtualmachineusername"
+  key_vault_id = data.azurerm_key_vault.Key_vault.id
+}
+
+# Get the password from key vault secret store
+data "azurerm_key_vault_secret" "vm_admin_password" {
+  name         = "Spokevmvirtualmachinepassword"
+  key_vault_id = data.azurerm_key_vault.Key_vault.id
+}
+
 # Create the Virtual Machines(VM) and assign the NIC to specific VM
 resource "azurerm_windows_virtual_machine" "VMs" {
-  name = "DB-VM"
+  name = "OnPrem-VM"
   resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
   location = azurerm_resource_group.On_Premises["On_Premises_RG"].location
   size                  = "Standard_DS1_v2"
-  admin_username        = var.admin_username
-  admin_password        = var.admin_password
+  admin_username        = data.azurerm_key_vault_secret.vm_admin_username.value
+  admin_password        = data.azurerm_key_vault_secret.vm_admin_password.value
   network_interface_ids = [azurerm_network_interface.subnet_nic.id]
 
   os_disk {
@@ -130,5 +148,31 @@ resource "azurerm_windows_virtual_machine" "VMs" {
     sku       = "2019-Datacenter"
     version   = "latest"
   }
-  depends_on = [ azurerm_network_interface.subnet_nic ]
+  depends_on = [ azurerm_network_interface.subnet_nic , data.azurerm_key_vault_secret.vm_admin_password , data.azurerm_key_vault_secret.vm_admin_username]
+}
+
+# Creates the route table
+resource "azurerm_route_table" "route_table" {
+  name                = "Onprem-Spoke"
+  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  location = azurerm_resource_group.On_Premises["On_Premises_RG"].location
+  depends_on = [ azurerm_resource_group.On_Premises , azurerm_subnet.subnets ]
+}
+
+# Creates the route in the route table (OnPrem-Firewall-Spoke)
+resource "azurerm_route" "route_01" {
+  name                   = "ToSpoke01"
+  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  route_table_name = azurerm_route_table.route_table.name
+  address_prefix = "10.20.0.0/16"     # destnation network address space
+  next_hop_type          = "VirtualNetworkGateway" 
+  # vnext_hop_in_ip_address = data.azurerm_public_ip.Hub-VPN-GW-public-ip.ip_address   # Hub-Gateway public IP
+  depends_on = [ azurerm_route_table.route_table ]
+}
+
+# Associate the route table with the subnet
+resource "azurerm_subnet_route_table_association" "RT-ass" {
+   subnet_id                 = azurerm_subnet.subnets["OnPremSubnet"].id
+   route_table_id = azurerm_route_table.route_table.id
+   depends_on = [ azurerm_subnet.subnets , azurerm_route_table.route_table ]
 }

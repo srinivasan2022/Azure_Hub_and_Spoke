@@ -35,8 +35,8 @@ variable "subnet_details" {
       address_prefix = "10.100.1.0/24"
     },
     
-    "DB" = {
-        subnet_name = "DB"
+    "OnPremSubnet" = {
+        subnet_name = "OnPremSubnet"
         address_prefix = "10.100.2.0/24"
     }
   }

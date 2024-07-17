@@ -30,13 +30,13 @@ variable "subnet_details" {
     address_prefix = string
   }))
   default = {
-    "Web" = {
-      subnet_name = "Web"
+    "Web-01" = {
+      subnet_name = "Web-01"
       address_prefix = "10.20.1.0/24"
     },
     
-    "App" = {
-        subnet_name = "App"
+    "Web-02" = {
+        subnet_name = "Web-02"
         address_prefix = "10.20.2.0/24"
     }
   }

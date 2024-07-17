@@ -181,16 +181,33 @@ resource "azurerm_application_gateway" "appGW" {
 #   }
 # }
  
+# Fetch the data from key vault
+data "azurerm_key_vault" "Key_vault" {
+  name                = "MyKeyVault1603"
+  resource_group_name = "Spoke_01_RG"
+}
 
-## Create windows Virtual Machine Scale Set (VMSS)
+# Get the username from key vault secret store
+data "azurerm_key_vault_secret" "vm_admin_username" {
+  name         = "Spokevmvirtualmachineusername"
+  key_vault_id = data.azurerm_key_vault.Key_vault.id
+}
+
+# Get the password from key vault secret store
+data "azurerm_key_vault_secret" "vm_admin_password" {
+  name         = "Spokevmvirtualmachinepassword"
+  key_vault_id = data.azurerm_key_vault.Key_vault.id
+}
+
+# Create windows Virtual Machine Scale Set (VMSS)
 resource "azurerm_windows_virtual_machine_scale_set" "vmss" {
   name                = "myvmss"
   resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
   location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
   sku = "Standard_DS1_v2"
   instances = 2
-  admin_username = var.admin_username
-  admin_password = var.admin_password
+  admin_username = data.azurerm_key_vault_secret.vm_admin_username.value
+  admin_password = data.azurerm_key_vault_secret.vm_admin_password.value
 
   # sku {
   #   name     = "Standard_DS1_v2"
@@ -304,34 +321,34 @@ resource "azurerm_route_table" "route_table" {
 #   depends_on = [ azurerm_route_table.route_table ]
 # }
 
-# Creates the route in the route table (Spoke02-NVA-Spoke01)
-resource "azurerm_route" "route_02" {
-  name                   = "ToSpoke01"
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  route_table_name = azurerm_route_table.route_table.name
-  address_prefix = "10.20.0.0/16"    # destination network address space
-  next_hop_type          = "VirtualAppliance" 
-  next_hop_in_ip_address = "10.10.4.4"   # NVA private IP
-  depends_on = [ azurerm_route_table.route_table ]
-}
+# # Creates the route in the route table (Spoke02-NVA-Spoke01)
+# resource "azurerm_route" "route_02" {
+#   name                   = "ToSpoke01"
+#   resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
+#   route_table_name = azurerm_route_table.route_table.name
+#   address_prefix = "10.20.0.0/16"    # destination network address space
+#   next_hop_type          = "VirtualAppliance" 
+#   next_hop_in_ip_address = "10.10.4.4"   # NVA private IP
+#   depends_on = [ azurerm_route_table.route_table ]
+# }
 
-# Creates the route in the route tables (Spoke02-To-Firewall)
-resource "azurerm_route" "route_03" {
-  name                   = "ToFirewall"
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  route_table_name = azurerm_route_table.route_table.name
-  address_prefix         = "0.0.0.0/0"   # All Traffic
-  next_hop_type          = "VirtualAppliance"
-  next_hop_in_ip_address = "10.10.0.4"  # Firewall private IP
-  depends_on = [ azurerm_route_table.route_table ]
-}
+# # Creates the route in the route tables (Spoke02-To-Firewall)
+# resource "azurerm_route" "route_03" {
+#   name                   = "ToFirewall"
+#   resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
+#   route_table_name = azurerm_route_table.route_table.name
+#   address_prefix         = "0.0.0.0/0"   # All Traffic
+#   next_hop_type          = "VirtualAppliance"
+#   next_hop_in_ip_address = "10.10.0.4"  # Firewall private IP
+#   depends_on = [ azurerm_route_table.route_table ]
+# }
 
-# Associate the route table with the subnet
-resource "azurerm_subnet_route_table_association" "example" {
-   subnet_id                 = azurerm_subnet.subnets["VMSS"].id
-  route_table_id = azurerm_route_table.route_table.id
-  depends_on = [ azurerm_subnet.subnets , azurerm_route_table.route_table ]
-}
+# # Associate the route table with the subnet
+# resource "azurerm_subnet_route_table_association" "example" {
+#    subnet_id                 = azurerm_subnet.subnets["VMSS"].id
+#   route_table_id = azurerm_route_table.route_table.id
+#   depends_on = [ azurerm_subnet.subnets , azurerm_route_table.route_table ]
+# }
 
 # # Creates the policy definition
 # resource "azurerm_policy_definition" "rg_policy_def" {
