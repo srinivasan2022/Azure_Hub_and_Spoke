@@ -65,12 +65,12 @@ resource "azurerm_network_security_group" "nsg" {
 }
 
 # Associate the NSG for their Subnets
-# resource "azurerm_subnet_network_security_group_association" "nsg_ass" {
-#   for_each = { for idx , subnet in azurerm_subnet.subnets : idx => subnet.id}
-#   subnet_id                 = each.value
-#   network_security_group_id =   azurerm_network_security_group.nsg[local.nsg_names[each.key]].id
-#   depends_on = [ azurerm_network_security_group.nsg ]
-# }
+resource "azurerm_subnet_network_security_group_association" "nsg_ass" {
+  for_each = { for idx , subnet in azurerm_subnet.subnets : idx => subnet.id}
+  subnet_id                 = each.value
+  network_security_group_id =   azurerm_network_security_group.nsg[local.nsg_names[each.key]].id
+  depends_on = [ azurerm_network_security_group.nsg ]
+}
 
 # Create the Public IP for Application Gateway
 resource "azurerm_public_ip" "public_ip" {
@@ -136,81 +136,33 @@ resource "azurerm_application_gateway" "appGW" {
     depends_on = [azurerm_resource_group.Spoke_02 ,azurerm_subnet.subnets ,azurerm_public_ip.public_ip]
  }
 
-# resource "azurerm_application_gateway" "appGW" {
-#   name                = "App-Gateway"
-#   resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-#   location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
-#   sku {
-#     name     = "Standard_v2"
-#     tier     = "Standard_v2"
-#     capacity = 2
-#   }
- 
-#   gateway_ip_configuration {
-#     name      = "appGatewayIpConfig"
-#     subnet_id = azurerm_subnet.subnets["App-GW"].id
-#   }
- 
-#   frontend_ip_configuration {
-#     name                 = "appGatewayFrontendIP"
-#     public_ip_address_id = azurerm_public_ip.public_ip.id
-#   }
- 
-#   frontend_port {
-#     name = "appGatewayFrontendPort"
-#     port = 443
-#   }
- 
-#   ssl_certificate {
-#     name                = "examplecert"
-#     key_vault_secret_id = azurerm_key_vault_certificate.example.secret_id
-#   }
- 
-#   http_listener {
-#     name                           = "appGatewayListener"
-#     frontend_ip_configuration_name = "appGatewayFrontendIP"
-#     frontend_port_name             = "appGatewayFrontendPort"
-#     protocol                       = "Https"
-#     ssl_certificate_name           = "examplecert"
-#   }
- 
-#   backend_address_pool {
-#     name = "appGatewayBackendPool"
-#   }
- 
-#   backend_http_settings {
-#     name                  = "appGatewayBackendHttpSettings"
-#     cookie_based_affinity = "Disabled"
-#     port                  = 80
-#     protocol              = "Http"
-#     request_timeout       = 20
-#   }
- 
-#   request_routing_rule {
-#     name                       = "appGatewayRule"
-#     rule_type                  = "Basic"
-#     http_listener_name         = "appGatewayListener"
-#     backend_address_pool_name  = "appGatewayBackendPool"
-#     backend_http_settings_name = "appGatewayBackendHttpSettings"
-#   }
-# }
- 
+# Fetch the data from key vault
+data "azurerm_key_vault" "Key_vault" {
+  name                = "MyKeyVault1603"
+  resource_group_name = "Spoke_01_RG"
+}
 
-## Create windows Virtual Machine Scale Set (VMSS)
+# Get the username from key vault secret store
+data "azurerm_key_vault_secret" "vm_admin_username" {
+  name         = "Spokevmvirtualmachineusername"
+  key_vault_id = data.azurerm_key_vault.Key_vault.id
+}
+
+# Get the password from key vault secret store
+data "azurerm_key_vault_secret" "vm_admin_password" {
+  name         = "Spokevmvirtualmachinepassword"
+  key_vault_id = data.azurerm_key_vault.Key_vault.id
+}
+
+# Create windows Virtual Machine Scale Set (VMSS)
 resource "azurerm_windows_virtual_machine_scale_set" "vmss" {
   name                = "myvmss"
   resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
   location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
   sku = "Standard_DS1_v2"
   instances = 2
-  admin_username = var.admin_username
-  admin_password = var.admin_password
-
-  # sku {
-  #   name     = "Standard_DS1_v2"
-  #   tier     = "Standard"
-  #   capacity = 2
-  # }
+  admin_username = data.azurerm_key_vault_secret.vm_admin_username.value
+  admin_password = data.azurerm_key_vault_secret.vm_admin_password.value
   network_interface {
     name = "myvmss"
     primary = true
@@ -230,39 +182,6 @@ resource "azurerm_windows_virtual_machine_scale_set" "vmss" {
     sku       = "2019-Datacenter"
     version   = "latest"
   }
-  # network_profile {
-  #   name    = "my-vmss-nic"
-  #   primary = true
-  #   ip_configuration {
-  #     name                                   = "internal"
-  #     subnet_id                              = azurerm_subnet.subnets["VMSS"].id
-  #     primary                                = true
-  #     load_balancer_backend_address_pool_ids = [azurerm_application_gateway.appGW.id]
-  #   }                                       //[azurerm_application_gateway.example.backend_address_pool[0].id]
-  # }
-
-  # storage_profile_image_reference {
-  #   publisher = "MicrosoftWindowsServer"
-  #   offer     = "WindowsServer"
-  #   sku       = "2019-Datacenter"
-  #   version   = "latest"
-  # }
-
-  # storage_profile_os_disk {
-  #   caching           = "ReadWrite"
-  #   create_option     = "FromImage"
-  #   managed_disk_type = "Standard_LRS"
-  # }
-
-  # os_profile {
-  #   computer_name_prefix = "examplevmss"
-  #   admin_username       = "adminuser"
-  #   admin_password       = "Password1234!"
-  # }
-
-  # os_profile_windows_config {
-  #    provision_vm_agent = true
-  # }
 }
 
 
@@ -305,46 +224,6 @@ resource "azurerm_route_table" "route_table" {
   resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
   location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
   depends_on = [ azurerm_resource_group.Spoke_02 , azurerm_subnet.subnets ]
-}
-
-# # Creates the Routes in the route tables
-# resource "azurerm_route" "route_01" {
-#   name                   = "route-01"
-#   resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-#   for_each = toset(local.subnet_names)
-#   route_table_name = azurerm_route_table.route_table.name
-#   address_prefix         = "0.0.0.0/0"
-#   next_hop_type          = "Internet"
-#   depends_on = [ azurerm_route_table.route_table ]
-# }
-
-# Creates the route in the route table (Spoke02-NVA-Spoke01)
-resource "azurerm_route" "route_02" {
-  name                   = "ToSpoke01"
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  route_table_name = azurerm_route_table.route_table.name
-  address_prefix = "10.20.0.0/16"    # destination network address space
-  next_hop_type          = "VirtualAppliance" 
-  next_hop_in_ip_address = "10.10.4.4"   # NVA private IP
-  depends_on = [ azurerm_route_table.route_table ]
-}
-
-# Creates the route in the route tables (Spoke02-To-Firewall)
-resource "azurerm_route" "route_03" {
-  name                   = "ToFirewall"
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  route_table_name = azurerm_route_table.route_table.name
-  address_prefix         = "0.0.0.0/0"   # All Traffic
-  next_hop_type          = "VirtualAppliance"
-  next_hop_in_ip_address = "10.10.0.4"  # Firewall private IP
-  depends_on = [ azurerm_route_table.route_table ]
-}
-
-# Associate the route table with the subnet
-resource "azurerm_subnet_route_table_association" "example" {
-   subnet_id                 = azurerm_subnet.subnets["VMSS"].id
-  route_table_id = azurerm_route_table.route_table.id
-  depends_on = [ azurerm_subnet.subnets , azurerm_route_table.route_table ]
 }
 
 # # Creates the policy definition
@@ -409,15 +288,16 @@ The following resources are used by this module:
 - [azurerm_network_security_group.nsg](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_security_group) (resource)
 - [azurerm_public_ip.public_ip](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/public_ip) (resource)
 - [azurerm_resource_group.Spoke_02](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) (resource)
-- [azurerm_route.route_02](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/route) (resource)
-- [azurerm_route.route_03](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/route) (resource)
 - [azurerm_route_table.route_table](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/route_table) (resource)
 - [azurerm_subnet.subnets](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet) (resource)
-- [azurerm_subnet_route_table_association.example](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet_route_table_association) (resource)
+- [azurerm_subnet_network_security_group_association.nsg_ass](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet_network_security_group_association) (resource)
 - [azurerm_virtual_network.Spoke_02_vnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network) (resource)
 - [azurerm_virtual_network_peering.Hub-Spoke_02](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_peering) (resource)
 - [azurerm_virtual_network_peering.Spoke_02-To-Hub](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_peering) (resource)
 - [azurerm_windows_virtual_machine_scale_set.vmss](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/windows_virtual_machine_scale_set) (resource)
+- [azurerm_key_vault.Key_vault](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault) (data source)
+- [azurerm_key_vault_secret.vm_admin_password](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault_secret) (data source)
+- [azurerm_key_vault_secret.vm_admin_username](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault_secret) (data source)
 - [azurerm_virtual_network.Hub_vnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/virtual_network) (data source)
 
 <!-- markdownlint-disable MD013 -->

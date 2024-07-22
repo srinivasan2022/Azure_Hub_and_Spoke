@@ -36,20 +36,7 @@ resource "azurerm_public_ip" "public_ips" {
   depends_on = [ azurerm_resource_group.Hub ]
 }
  
-# # Create the Azure Bastion Host
-# resource "azurerm_bastion_host" "bastion" {
-#   name                = "Bastion"
-#   location            = azurerm_resource_group.Hub["Hub_RG"].location
-#   resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
-#   sku = "Standard"
-#   ip_configuration {
-#     public_ip_address_id = azurerm_public_ip.public_ips["AzureBastionSubnet"].id
-#     name = "example"
-#     subnet_id = azurerm_subnet.subnets["AzureBastionSubnet"].id
-#   }
-#   depends_on = [ azurerm_resource_group.Hub , azurerm_public_ip.public_ips , azurerm_subnet.subnets ]
-# }
-
+# Create the Azure Firewall policy
 resource "azurerm_firewall_policy" "firewall_policy" {
   name                = "example-firewall-policy"
   location            = azurerm_resource_group.Hub["Hub_RG"].location
@@ -58,7 +45,7 @@ resource "azurerm_firewall_policy" "firewall_policy" {
   depends_on = [ azurerm_resource_group.Hub , azurerm_subnet.subnets ]
 }
  
-# Create the Azure Firewall in their Specified Subnet
+# Create the Azure Firewall to control the outbound traffic
 resource "azurerm_firewall" "firewall" {
   name                = "Firewall"
   location            = azurerm_resource_group.Hub["Hub_RG"].location
@@ -76,30 +63,6 @@ resource "azurerm_firewall" "firewall" {
   azurerm_subnet.subnets , azurerm_firewall_policy.firewall_policy ]
 }
 
-# resource "azurerm_firewall_application_rule_collection" "fw_app_rule_collection" {
-#   name                = "example-app-rule"
-#   azure_firewall_name = azurerm_firewall.firewall.name
-#   resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
-#   priority            = 200
-#   action              = "Allow"
-
-#   rule {
-#     name                  = "allow-http"
-#     source_addresses      = ["10.20.1.4"]
-#     protocol {
-#       port = 80
-#       type = "Http"
-#     }
-#     protocol {
-#       port = 443
-#       type = "Https"
-#     }
-
-#     target_fqdns = ["microsoft.com"]
-#   }
-#   depends_on = [ azurerm_firewall.firewall , azurerm_firewall_policy.firewall_policy ]
-# }
-
 # Create the IP Group to store Spoke Ip addresses
 resource "azurerm_ip_group" "Ip_group" {
   name                = "Spoke-Ip-Group"
@@ -109,13 +72,13 @@ resource "azurerm_ip_group" "Ip_group" {
   depends_on = [ azurerm_resource_group.Hub ]
 }
 
-# Create the Firewall policy rule collection
+# Create the Azure Firewall policy rule collection
 resource "azurerm_firewall_policy_rule_collection_group" "fw_policy_rule_collection" {
   name                = "app-rule-collection-group"
   firewall_policy_id  = azurerm_firewall_policy.firewall_policy.id
   priority            = 100
 
-  nat_rule_collection {        # Create the DNAT rule collection
+  nat_rule_collection {           # Create the DNAT rule collection for take the RDP to OnPremises VM
     name     = "dnat-rule-collection"
     priority = 100
     action   = "Dnat"
@@ -129,26 +92,18 @@ resource "azurerm_firewall_policy_rule_collection_group" "fw_policy_rule_collect
       translated_port    = "3389"
       protocols         = ["TCP"]
     }
-    # rule {
-    #   name = "RDP"
-    #   source_addresses = [ "10.100.2.4" ]
-    #   destination_ports = [ "3389" ]
-    #   destination_address = "10.10.0.4"
-    #   translated_address = "10.20.1.4"
-    #   translated_port = "3389"
-    #   protocols = [ "TCP" ]
-    # }
   }
  
-  network_rule_collection {     # Create the Network rule collection
+  network_rule_collection {     # Create the Network rule collection for forwarding the traffic betwwen Hub and OnPremises network
     name     = "network-rule-collection"
     priority = 200
     action   = "Allow"
 
     rule {
       name = "allow-spokes"
-      source_addresses = [ "10.100.0.0/16" ]
-      destination_addresses = [ "10.20.0.0/16" ]
+      source_addresses = [ "10.100.0.0/16" ]     # OnPremises network address
+      destination_addresses = [ "10.20.0.0/16" ] # Spoke network address
+      # destination_ip_groups = [ azurerm_ip_group.Ip_group.id ] # All Spoke network addresses
       destination_ports = [ "*" ]
       protocols = [ "Any" ]
     }
@@ -234,14 +189,14 @@ resource "azurerm_local_network_gateway" "Hub_local_gateway" {
   name                = "Hub-To-OnPremises"
   location            = azurerm_resource_group.Hub["Hub_RG"].location
   resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
-  gateway_address     = data.azurerm_public_ip.OnPrem-VPN-GW-public-ip.ip_address
-  address_space       = [data.azurerm_virtual_network.On_Premises_vnet.address_space[0]]
+  gateway_address     = data.azurerm_public_ip.OnPrem-VPN-GW-public-ip.ip_address        # TODO:  Replace the Hub-VPN Public-IP
+  address_space       = [data.azurerm_virtual_network.On_Premises_vnet.address_space[0]]  # TODO:  Replace the OnPremises Vnet address space
   depends_on = [ azurerm_public_ip.public_ips , azurerm_virtual_network_gateway.gateway , 
               data.azurerm_public_ip.OnPrem-VPN-GW-public-ip ,data.azurerm_virtual_network.On_Premises_vnet ]
 }
 
  # Create the VPN-Connection for Connecting the Networks
-resource "azurerm_virtual_network_gateway_connection" "vpn_connection" {
+resource "azurerm_virtual_network_gateway_connection" "vpn_connection" { 
   name                           = "Hub-OnPremises-vpn-connection"
   location            = azurerm_resource_group.Hub["Hub_RG"].location
   resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
@@ -249,7 +204,7 @@ resource "azurerm_virtual_network_gateway_connection" "vpn_connection" {
   local_network_gateway_id       = azurerm_local_network_gateway.Hub_local_gateway.id
   type                           = "IPsec"
   connection_protocol            = "IKEv2"
-  shared_key                     = "YourSharedKey"
+  shared_key                     = "YourSharedKey" 
 
   depends_on = [ azurerm_virtual_network_gateway.gateway , azurerm_local_network_gateway.Hub_local_gateway]
 }
@@ -273,12 +228,12 @@ resource "azurerm_route" "route_02" {
   depends_on = [ azurerm_route_table.route_table ]
 }
 
-# # Associate the route table with the subnet
-# resource "azurerm_subnet_route_table_association" "RT-ass" {
-#    subnet_id                 = azurerm_subnet.subnets["GatewaySubnet"].id
-#   route_table_id = azurerm_route_table.route_table.id
-#   depends_on = [ azurerm_subnet.subnets , azurerm_route_table.route_table ]
-# }
+# Associate the route table with the their subnet
+resource "azurerm_subnet_route_table_association" "RT-ass" {
+   subnet_id                 = azurerm_subnet.subnets["GatewaySubnet"].id
+  route_table_id = azurerm_route_table.route_table.id
+  depends_on = [ azurerm_subnet.subnets , azurerm_route_table.route_table ]
+}
 
 
 # # Creates the policy definition
@@ -316,6 +271,7 @@ resource "azurerm_route" "route_02" {
 #   display_name         = "Hub_RG Policy Assignment"
 #   description          = "Assigning policy to the resource group"
 # }
+
 
 
 

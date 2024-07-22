@@ -38,17 +38,7 @@ variable "subnet_details" {
     "GatewaySubnet" = {
       subnet_name = "GatewaySubnet"
       address_prefix = "10.10.1.0/27"
-    },
-    
-    # "AzureBastionSubnet" = {
-    #     subnet_name = "AzureBastionSubnet"
-    #     address_prefix = "10.10.2.0/24"
-    # },
-
-    # "NVASubnet" = {
-    #   subnet_name = "NVASubnet"
-    #   address_prefix = "10.10.4.0/24"
-    # }
+    }
   }
 }
 

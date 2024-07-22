@@ -73,8 +73,8 @@ resource "azurerm_local_network_gateway" "OnPremises_local_gateway" {
   name                = "OnPremises-To-Hub"
   location            = azurerm_resource_group.On_Premises["On_Premises_RG"].location
   resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
-  gateway_address     = data.azurerm_public_ip.Hub-VPN-GW-public-ip.ip_address
-  address_space       = [data.azurerm_virtual_network.Hub_vnet.address_space[0]]
+  gateway_address     = data.azurerm_public_ip.Hub-VPN-GW-public-ip.ip_address     # Replace the Hub-VPN Public-IP
+  address_space       = [data.azurerm_virtual_network.Hub_vnet.address_space[0]]   # Replace the Hub-Vnet address space
   depends_on = [ azurerm_public_ip.public_ips , azurerm_virtual_network_gateway.gateway ,
                data.azurerm_public_ip.Hub-VPN-GW-public-ip , data.azurerm_virtual_network.Hub_vnet ]
 }
@@ -93,7 +93,6 @@ resource "azurerm_virtual_network_gateway_connection" "vpn_connection" {
   depends_on = [ azurerm_virtual_network_gateway.gateway , azurerm_local_network_gateway.OnPremises_local_gateway]
 }
 
- # ------------------
 
 # Create the Network Interface card for Virtual Machines
 resource "azurerm_network_interface" "subnet_nic" {
@@ -165,12 +164,11 @@ resource "azurerm_route" "route_01" {
   resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
   route_table_name = azurerm_route_table.route_table.name
   address_prefix = "10.20.0.0/16"     # destnation network address space
-  next_hop_type          = "VirtualNetworkGateway" 
-  # vnext_hop_in_ip_address = data.azurerm_public_ip.Hub-VPN-GW-public-ip.ip_address   # Hub-Gateway public IP
+  next_hop_type      = "VirtualNetworkGateway" 
   depends_on = [ azurerm_route_table.route_table ]
 }
 
-# Associate the route table with the subnet
+# Associate the route table with their subnet
 resource "azurerm_subnet_route_table_association" "RT-ass" {
    subnet_id                 = azurerm_subnet.subnets["OnPremSubnet"].id
    route_table_id = azurerm_route_table.route_table.id

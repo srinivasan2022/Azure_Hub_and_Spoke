@@ -61,18 +61,6 @@ resource "azurerm_subnet_network_security_group_association" "nsg_ass" {
   depends_on = [ azurerm_network_security_group.nsg ]
 }
 
-# # Create the Availability Set for High availability
-# resource "azurerm_availability_set" "av-set" {
-#   name                = "av-set"
-#   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-#   location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
- 
-#   managed            = true
-#   platform_fault_domain_count = 2
-#   platform_update_domain_count = 2
-#   depends_on = [ azurerm_resource_group.Spoke_01 ]
-# }
-
 # Create the Network Interface card for Virtual Machines
 resource "azurerm_network_interface" "subnet_nic" {
   for_each = toset(local.subnet_names)
@@ -104,6 +92,12 @@ resource "azurerm_key_vault" "Key_vault" {
     secret_permissions = [
       "Get",
       "Set",
+      "Backup",
+      "Delete",
+      "Purge", 
+      "List",
+      "Recover",
+      "Restore",
     ]
   }
   depends_on = [ azurerm_resource_group.Spoke_01 ]
@@ -125,9 +119,8 @@ resource "azurerm_key_vault_secret" "vm_admin_password" {
   depends_on = [ azurerm_key_vault.Key_vault ]
 }
 
-# Create the Virtual Machines(VM) in Availability Set and assign the NIC to specific VMs
+# Create the Virtual Machines(VM) and assign the NIC to specific VMs
 resource "azurerm_windows_virtual_machine" "VMs" {
-  # count = 2
   name                  = "${azurerm_subnet.subnets[local.nsg_names[each.key]].name}-VM"
   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
   location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
@@ -136,10 +129,10 @@ resource "azurerm_windows_virtual_machine" "VMs" {
   # admin_password        =  azurerm_key_vault_secret.vm_admin_password.value  
   admin_username = var.admin_username
   admin_password = var.admin_password
-  for_each = {for idx , nic in azurerm_network_interface.subnet_nic : idx => nic.id}
+   for_each = {for idx , nic in azurerm_network_interface.subnet_nic : idx => nic.id}
+  # for_each = local.NIC_Names
   network_interface_ids = [each.value]
-  # zone = [count.index+1] # 1 2
-  # zone = [[for i in range(1,length(azurerm_network_interface.subnet_nic)+1) : i]]
+  # zone = each.key
   
 
   os_disk {
@@ -153,15 +146,8 @@ resource "azurerm_windows_virtual_machine" "VMs" {
     sku       = "2019-Datacenter"
     version   = "latest"
   }
-
-  custom_data = base64encode(templatefile("scripts/mount-fileshare.ps1", {
-    storage_account_name = azurerm_storage_account.storage-account.name
-    share_name           = azurerm_storage_share.fileshare.name
-    storage_account_key  = azurerm_storage_account.storage-account.primary_access_key
-  }))
-
-  depends_on = [ azurerm_network_interface.subnet_nic , azurerm_storage_share.fileshare ]
-}
+#   depends_on = [ azurerm_network_interface.subnet_nic ,  azurerm_storage_share.fileshare ]
+ }
 
 # Create the Storage account for FileShare
 resource "azurerm_storage_account" "storage-account" {
@@ -181,51 +167,43 @@ resource "azurerm_storage_share" "fileshare" {
   depends_on = [ azurerm_resource_group.Spoke_01 , azurerm_storage_account.storage-account ]
 }
 
-data "template_file" "mount_fileshare" {
-  template = file("scripts/mount-fileshare.ps1")
- 
-  vars = {
-  storage_account_name = azurerm_storage_account.storage-account.name
-  share_name = azurerm_storage_share.fileshare.name
-  storage_account_key  = azurerm_storage_account.storage-account.primary_access_key
-  }
-}
-
-
-resource "azurerm_virtual_machine_extension" "example" {
-  name                 = "customScript"
-  virtual_machine_id = azurerm_windows_virtual_machine.VMs["Web-01"].id
+# Mount the fileshare to Vitrual Machine
+resource "azurerm_virtual_machine_extension" "your-extension" {
+  name                 = "vm-extension-name"
+  virtual_machine_id   = azurerm_windows_virtual_machine.VMs["Web-01"].id
   publisher            = "Microsoft.Compute"
   type                 = "CustomScriptExtension"
-  type_handler_version = "1.10"
-  
-  settings = <<SETTINGS
-   {
-     "commandToExecute": "${data.template_file.mount_fileshare.rendered}"
-   }
-   SETTINGS
+  type_handler_version = "1.9"
 
+  protected_settings = <<SETTINGS
+  {
+   "commandToExecute": "powershell -command \"[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${local.base64EncodedScript }')) | Out-File -filepath postBuild.ps1\" && powershell -ExecutionPolicy Unrestricted -File postBuild.ps1"
+  }
+  SETTINGS
+
+  depends_on = [azurerm_windows_virtual_machine.VMs]
 }
-  
-# # Create the data disk
-# resource "azurerm_managed_disk" "data_disk" {
-#   name                 = "vm-datadisk"
-#   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-#   location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
-#   storage_account_type = "Standard_LRS"
-#   create_option        = "Empty"
-#   disk_size_gb         = "4"
-#   depends_on = [ azurerm_windows_virtual_machine.VMs ]
-# }
 
-# # Attach the data disk to the virtual machine
-# resource "azurerm_virtual_machine_data_disk_attachment" "example_attach" {
-#   managed_disk_id    = azurerm_managed_disk.data_disk.id
-#   virtual_machine_id = azurerm_windows_virtual_machine.VMs["Web-01"].id
-#   lun                = 0
-#   caching            = "ReadWrite"
-#   depends_on = [ azurerm_windows_virtual_machine.VMs , azurerm_managed_disk.data_disk ]
-# }
+
+# Create the data disk
+resource "azurerm_managed_disk" "data_disk" {
+  name                 = "vm-datadisk"
+  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
+  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  storage_account_type = "Standard_LRS"
+  create_option        = "Empty"
+  disk_size_gb         = "4"
+  depends_on = [ azurerm_windows_virtual_machine.VMs ]
+}
+
+# Attach the data disk to the virtual machine
+resource "azurerm_virtual_machine_data_disk_attachment" "example_attach" {
+  managed_disk_id    = azurerm_managed_disk.data_disk.id
+  virtual_machine_id = azurerm_windows_virtual_machine.VMs["Web-01"].id
+  lun                = 0
+  caching            = "ReadWrite"
+  depends_on = [ azurerm_windows_virtual_machine.VMs , azurerm_managed_disk.data_disk ]
+}
 
 # Fetch the data from Hub Virtual Network for peering the Spoke_01 Virtual Network (Spoke_01 <--> Hub)
 data "azurerm_virtual_network" "Hub_vnet" {
@@ -241,7 +219,7 @@ resource "azurerm_virtual_network_peering" "Spoke_01-To-Hub" {
   remote_virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id
   allow_virtual_network_access = true
   allow_forwarded_traffic   = true
-  allow_gateway_transit     = true
+  allow_gateway_transit     = false
   use_remote_gateways       = false
   depends_on = [ azurerm_virtual_network.Spoke_01_vnet , data.azurerm_virtual_network.Hub_vnet  ]
 }
@@ -254,74 +232,11 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_01" {
   remote_virtual_network_id = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].id
   allow_virtual_network_access = true
   allow_forwarded_traffic   = true
-  allow_gateway_transit     = false
-  use_remote_gateways       = true
+  allow_gateway_transit     = true
+  use_remote_gateways       = false
   depends_on = [ azurerm_virtual_network.Spoke_01_vnet , data.azurerm_virtual_network.Hub_vnet ]
 }
 
-
-# # Creates the route in the route tables (Spoke01-To-Firewall)
-# resource "azurerm_route" "route_03" {
-#   name                   = "ToFirewall"
-#   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-#   route_table_name = azurerm_route_table.route_table.name
-#   address_prefix         = "0.0.0.0/0"     # All Traffic
-#   next_hop_type          = "VirtualAppliance"
-#   next_hop_in_ip_address = "10.10.0.4"     # Firewall private IP
-#   depends_on = [ azurerm_route_table.route_table ]
-# }
-
-# resource "azurerm_virtual_machine_extension" "vm_extension" {
-#   //for_each = [for vm in azurerm_windows_virtual_machine.VMs : vm.name]
-#   name                 = "${azurerm_windows_virtual_machine.VMs["Web"].name}-extension"
-#   virtual_machine_id   = azurerm_windows_virtual_machine.VMs["Web"].id
-#   publisher            = "Microsoft.Compute"
-#   type                 = "CustomScriptExtension"
-#   type_handler_version = "1.10"
-
-#   settings = <<SETTINGS
-#     {
-#         "commandToExecute": "powershell -ExecutionPolicy Unrestricted -Command \\"$acctName = '${azurerm_storage_account.storage-account.name}'; $acctKey = '${azurerm_storage_account.storage-account.primary_access_key}'; net use Z: \\\\'${azurerm_storage_account.storage-account.name}.file.core.windows.net\\${azurerm_storage_share.fileshare.name} /user:$acctName $acctKey\\""
-#     }
-#   SETTINGS
-# }
-
-# resource "azurerm_virtual_machine_extension" "vm_extension" {
-#   name                 = "${azurerm_windows_virtual_machine.VMs["Web"].name}-extension"
-#   virtual_machine_id =   azurerm_windows_virtual_machine.VMs["Web"].id
-#   publisher            = "Microsoft.Azure.Extensions"
-#   type                 = "CustomScript"
-#   type_handler_version = "2.0"
- 
-#   settings = <<SETTINGS
-#     {
-#    "commandToExecute": "apt-get update && apt-get install -y cifs-utils && mkdir -p /mnt/fileshare && mount -t cifs //${azurerm_storage_account.storage-account.name}.file.core.windows.net/${azurerm_storage_share.fileshare.name} /mnt/fileshare -o vers=3.0,username=${azurerm_storage_account.storage-account.name},password=${azurerm_storage_account.storage-account.primary_access_key},dir_mode=0777,file_mode=0777,serverino"
-#     }
-#   SETTINGS
-# }
-
-
-# resource "azurerm_virtual_machine_extension" "example" {
-#   name                 = "${azurerm_windows_virtual_machine.VMs["Web"].name}-extension"
-#   virtual_machine_id   = azurerm_windows_virtual_machine.VMs["Web"].id
-#   publisher            = "Microsoft.Compute"
-#   type                 = "CustomScriptExtension"
-#   type_handler_version = "1.10"
-
-#   settings = <<SETTINGS
-#     {
-#         "fileUris": ["https://<your-storage-account-name>.blob.core.windows.net/scripts/mount-fileshare.ps1"],
-#         "commandToExecute": "powershell -ExecutionPolicy Unrestricted -File mount-fileshare.ps1"
-#     }
-# SETTINGS
-
-#   protected_settings = <<PROTECTED_SETTINGS
-#     {
-#         "storageAccountName": "${azurerm_storage_account.storage-account.name}",
-#         "storageAccountKey": "${azurerm_storage_account.storage-account.primary_access_key}"
-#     }
-# PROTECTED_SETTINGS
-# }
 
 # # Creates the policy definition
 # resource "azurerm_policy_definition" "rg_policy_def" {

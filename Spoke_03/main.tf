@@ -52,23 +52,11 @@ resource "azurerm_app_service" "web_app" {
   location            = azurerm_resource_group.Spoke_03["Spoke_03_RG"].location
   resource_group_name = azurerm_resource_group.Spoke_03["Spoke_03_RG"].name
   app_service_plan_id = azurerm_app_service_plan.plan.id
-
-  # site_config {
-  #   dotnet_framework_version = "v4.0"
-  # }
-
-  # app_settings = {
-  #   "WEBSITE_RUN_FROM_PACKAGE" = "1"
-  # }
-
-  # identity {
-  #   type = "SystemAssigned"
-  # }
   depends_on = [ azurerm_resource_group.Spoke_03 , azurerm_app_service_plan.plan ]
 }
 
 # Enable the Virtual Network Integration to App services
-resource "azurerm_app_service_virtual_network_swift_connection" "example" {
+resource "azurerm_app_service_virtual_network_swift_connection" "vnet_integration" {
   app_service_id = azurerm_app_service.web_app.id
   subnet_id = azurerm_subnet.subnets["AppServiceSubnet"].id
   depends_on = [ azurerm_app_service.web_app , azurerm_subnet.subnets ]
