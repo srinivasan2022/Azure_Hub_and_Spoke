@@ -20,8 +20,10 @@ settings.json
 *.terraform
 *.terraform.lock.hcl
 .terraform-docs.yml
-_header.md
-_footer.md
+# _header.md
+# _footer.md
+*_header.md
+*_footer.md
 
 # Ignore override files as they are usually used to override resources locally and so
 # are not checked in
