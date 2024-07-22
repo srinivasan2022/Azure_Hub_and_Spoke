@@ -125,10 +125,8 @@ resource "azurerm_windows_virtual_machine" "VMs" {
   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
   location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
   size                  = "Standard_DS1_v2"
-  # admin_username        =  azurerm_key_vault_secret.vm_admin_username.value  
-  # admin_password        =  azurerm_key_vault_secret.vm_admin_password.value  
-  admin_username = var.admin_username
-  admin_password = var.admin_password
+   admin_username        =  azurerm_key_vault_secret.vm_admin_username.value  
+   admin_password        =  azurerm_key_vault_secret.vm_admin_password.value  
    for_each = {for idx , nic in azurerm_network_interface.subnet_nic : idx => nic.id}
   # for_each = local.NIC_Names
   network_interface_ids = [each.value]
