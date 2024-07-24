@@ -89,7 +89,7 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_03" {
   remote_virtual_network_id = azurerm_virtual_network.Spoke_03_vnet["Spoke_03_vnet"].id
   allow_virtual_network_access = true
   allow_forwarded_traffic   = true
-  allow_gateway_transit     = false
+  allow_gateway_transit     = true
   use_remote_gateways       = false
   depends_on = [ azurerm_virtual_network.Spoke_03_vnet , data.azurerm_virtual_network.Hub_vnet ]
 }

@@ -1,4 +1,4 @@
 name,priority,direction,access,protocol,source_port_range,destination_port_range,source_address_prefix,destination_address_prefix
 RDP,300,Inbound,Allow,Tcp,*,3389,*,*
 HTTP,290,Inbound,Allow,Tcp,*,80,*,*
-ICMP,280,Inbound,Allow,Icmp,*,
+ICMP,280,Inbound,Allow,Icmp,*,*,*,*
