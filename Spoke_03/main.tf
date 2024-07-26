@@ -1,8 +1,7 @@
 # Create a resource group
 resource "azurerm_resource_group" "Spoke_03" {
-  for_each = var.rg_details
-  name     = each.value.rg_name
-  location = each.value.rg_location
+  name     = var.rg_name
+  location = var.rg_location
 }
 
 # Create the Virtual Network with address space
@@ -10,8 +9,8 @@ resource "azurerm_virtual_network" "Spoke_03_vnet" {
     for_each = var.vnet_details
     name = each.value.vnet_name
     address_space = [each.value.address_space]
-    resource_group_name = azurerm_resource_group.Spoke_03["Spoke_03_RG"].name
-    location = azurerm_resource_group.Spoke_03["Spoke_03_RG"].location
+    resource_group_name = azurerm_resource_group.Spoke_03.name
+    location = azurerm_resource_group.Spoke_03.location
     depends_on = [ azurerm_resource_group.Spoke_03 ]
 }
 
@@ -21,7 +20,7 @@ resource "azurerm_subnet" "subnets" {
   name = each.key
   address_prefixes = [each.value.address_prefix]
   virtual_network_name = azurerm_virtual_network.Spoke_03_vnet["Spoke_03_vnet"].name
-  resource_group_name = azurerm_resource_group.Spoke_03["Spoke_03_RG"].name
+  resource_group_name = azurerm_resource_group.Spoke_03.name
   delegation {
     name = "appservice_delegation"
     service_delegation {
@@ -36,9 +35,9 @@ resource "azurerm_subnet" "subnets" {
  
 # Create an App Service Plan
 resource "azurerm_app_service_plan" "plan" {
-  name                = "appserviceplan"
-  location            = azurerm_resource_group.Spoke_03["Spoke_03_RG"].location
-  resource_group_name = azurerm_resource_group.Spoke_03["Spoke_03_RG"].name
+  name                = var.app_service_plan_name
+  location            = azurerm_resource_group.Spoke_03.location
+  resource_group_name = azurerm_resource_group.Spoke_03.name
   sku {
     tier = "Standard"
     size = "S1"
@@ -48,9 +47,9 @@ resource "azurerm_app_service_plan" "plan" {
 
 # Create the Web App
 resource "azurerm_app_service" "web_app" {
-  name                = "my-webapp1603"
-  location            = azurerm_resource_group.Spoke_03["Spoke_03_RG"].location
-  resource_group_name = azurerm_resource_group.Spoke_03["Spoke_03_RG"].name
+  name                = var.web_app_name
+  location            = azurerm_resource_group.Spoke_03.location
+  resource_group_name = azurerm_resource_group.Spoke_03.name
   app_service_plan_id = azurerm_app_service_plan.plan.id
   depends_on = [ azurerm_resource_group.Spoke_03 , azurerm_app_service_plan.plan ]
 }
@@ -126,7 +125,7 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_03" {
 # resource "azurerm_policy_assignment" "example" {
 #   name                 = "Spoke03-rg-policy-assignment"
 #   policy_definition_id = azurerm_policy_definition.rg_policy_def.id
-#   scope                = azurerm_resource_group.Spoke_01["Spoke_03_RG"].id
+#   scope                = azurerm_resource_group.Spoke_03.id
 #   display_name         = "Spoke03_RG Policy Assignment"
 #   description          = "Assigning policy to the resource group"
 # }

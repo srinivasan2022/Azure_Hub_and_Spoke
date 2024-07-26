@@ -3,9 +3,8 @@ data "azuread_client_config" "current" {}
 
 # Create the Resource Group
 resource "azurerm_resource_group" "Spoke_01" {
-   for_each = var.rg_details
-   name     = each.value.rg_name
-   location = each.value.rg_location
+   name     = var.rg_name
+   location = var.rg_location
 }
 
 # Create the Virtual Network with address space
@@ -13,8 +12,8 @@ resource "azurerm_virtual_network" "Spoke_01_vnet" {
     for_each = var.vnet_details
     name = each.value.vnet_name
     address_space = [each.value.address_space]
-    resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-    location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+    resource_group_name = azurerm_resource_group.Spoke_01.name
+    location = azurerm_resource_group.Spoke_01.location
     depends_on = [ azurerm_resource_group.Spoke_01 ]
 }
 
@@ -24,7 +23,7 @@ resource "azurerm_subnet" "subnets" {
   name = each.key
   address_prefixes = [each.value.address_prefix]
   virtual_network_name = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].name
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
+  resource_group_name = azurerm_resource_group.Spoke_01.name
   depends_on = [ azurerm_virtual_network.Spoke_01_vnet ]
 }
 
@@ -32,8 +31,8 @@ resource "azurerm_subnet" "subnets" {
 resource "azurerm_network_security_group" "nsg" {
   for_each = toset(local.subnet_names)
   name = each.key
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  resource_group_name = azurerm_resource_group.Spoke_01.name
+  location = azurerm_resource_group.Spoke_01.location
 
   dynamic "security_rule" {                           
      for_each = { for rule in local.rules_csv : rule.name => rule }
@@ -65,8 +64,8 @@ resource "azurerm_subnet_network_security_group_association" "nsg_ass" {
 resource "azurerm_network_interface" "subnet_nic" {
   for_each = toset(local.subnet_names)
   name                = "${each.key}-NIC"
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  resource_group_name = azurerm_resource_group.Spoke_01.name
+  location = azurerm_resource_group.Spoke_01.location
   
   ip_configuration {
     name                          = "internal"
@@ -78,9 +77,9 @@ resource "azurerm_network_interface" "subnet_nic" {
 
 # Creates the Azure Key vault to store the VM username and password
 resource "azurerm_key_vault" "Key_vault" {
-  name                        = "MyKeyVault1603"
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  name                        = var.Key_vault_name
+  resource_group_name = azurerm_resource_group.Spoke_01.name
+  location = azurerm_resource_group.Spoke_01.location
   sku_name                    = "standard"
   tenant_id                   = data.azurerm_client_config.current.tenant_id
   purge_protection_enabled    = true
@@ -122,8 +121,8 @@ resource "azurerm_key_vault_secret" "vm_admin_password" {
 # Create the Virtual Machines(VM) and assign the NIC to specific VMs
 resource "azurerm_windows_virtual_machine" "VMs" {
   name                  = "${azurerm_subnet.subnets[local.nsg_names[each.key]].name}-VM"
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  resource_group_name = azurerm_resource_group.Spoke_01.name
+  location = azurerm_resource_group.Spoke_01.location
   size                  = "Standard_DS1_v2"
    admin_username        =  azurerm_key_vault_secret.vm_admin_username.value  
    admin_password        =  azurerm_key_vault_secret.vm_admin_password.value  
@@ -149,9 +148,9 @@ resource "azurerm_windows_virtual_machine" "VMs" {
 
 # Create the Storage account for FileShare
 resource "azurerm_storage_account" "storage-account" {
-  name                     = "storageaccount160302"
-  resource_group_name =     azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  location                 = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  name                     = var.storage_account_name
+  resource_group_name =     azurerm_resource_group.Spoke_01.name
+  location                 = azurerm_resource_group.Spoke_01.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
   depends_on = [ azurerm_resource_group.Spoke_01  ]
@@ -159,7 +158,7 @@ resource "azurerm_storage_account" "storage-account" {
  
 # Create the FileShare in Storage account
 resource "azurerm_storage_share" "fileshare" {
-  name                 = "fileshare01"
+  name                 = var.file_share_name
   storage_account_name = azurerm_storage_account.storage-account.name
   quota                = 5
   depends_on = [ azurerm_resource_group.Spoke_01 , azurerm_storage_account.storage-account ]
@@ -185,9 +184,9 @@ resource "azurerm_virtual_machine_extension" "your-extension" {
 
 # Create the data disk
 resource "azurerm_managed_disk" "data_disk" {
-  name                 = "vm-datadisk"
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  name                 = var.data_disk_name
+  resource_group_name = azurerm_resource_group.Spoke_01.name
+  location = azurerm_resource_group.Spoke_01.location
   storage_account_type = "Standard_LRS"
   create_option        = "Empty"
   disk_size_gb         = "4"
@@ -275,8 +274,8 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_01" {
 # # Creates the Log Analytics workspace 
 # resource "azurerm_log_analytics_workspace" "log_analytics" {
 #   name                = "example-law"
-#   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-#   location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+#   resource_group_name = azurerm_resource_group.Spoke_01.name
+#   location = azurerm_resource_group.Spoke_01.location
 #   sku                 = "PerGB2018"
 #   retention_in_days   = 10
 # }

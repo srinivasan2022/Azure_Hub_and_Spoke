@@ -1,13 +1,19 @@
-variable "rg_details" {
-  type = map(object({
-    rg_name = string
-    rg_location = string
-  }))
-  default = {
-    "Spoke_03_RG" = {
-      rg_name = "Spoke_03_RG"
-      rg_location = "East us"
-    }
+variable "rg_name" {
+  type = string
+  description = "The name of the Resource Group"
+  validation {
+    condition = length(var.rg_name>0)
+    error_message = "The name must be provided"
+  }
+
+}
+
+variable "rg_location" {
+  type = string
+  description = "The Location of the Resource Group"
+  validation {
+    condition = length(var.rg_location>0)
+    error_message = "The Location must be provided"
   }
 }
 
@@ -16,22 +22,23 @@ variable "vnet_details" {
     vnet_name = string
     address_space = string
   }))
-  default = {
-    "Spoke_03_vnet" = {
-      vnet_name = "Spoke_03_vnet"
-      address_space = "10.40.0.0/16"
-    }
-  }
+  description = "The details of the VNET"
 }
+
 variable "subnet_details" {
   type = map(object({
     subnet_name = string
     address_prefix = string
   }))
-  default = {
-    "AppServiceSubnet" = {
-      subnet_name = "AppServiceSubnet"
-      address_prefix = "10.40.0.0/27"
-    }
- }
+  description = "The details of the Subnets"
+}
+
+variable "app_service_plan_name" {
+  type = string
+  default = "The name of app service plan"
+}
+
+variable "web_app_name" {
+  type = string
+  default = "The name of web app name"
 }

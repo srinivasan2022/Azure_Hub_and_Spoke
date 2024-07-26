@@ -1,27 +1,26 @@
-variable "rg_details" {
-  type = map(object({
-    rg_name = string
-    rg_location = string
-  }))
-  default = {
-    "Hub_RG" = {
-      rg_name = "Hub_RG"
-      rg_location = "East us"
-    }
+variable "rg_name" {
+  type = string
+  description = "The name of the Resource Group"
+  validation {
+    condition = length(var.rg_name>0)
+    error_message = "The name must be provided"
+  }
+
+}
+variable "rg_location" {
+  type = string
+  description = "The Location of the Resource Group"
+  validation {
+    condition = length(var.rg_location>0)
+    error_message = "The Location must be provided"
   }
 }
-
 variable "vnet_details" {
   type = map(object({
     vnet_name = string
     address_space = string
   }))
-  default = {
-    "Hub_vnet" = {
-      vnet_name = "Hub_vnet"
-      address_space = "10.10.0.0/16"
-    }
-  }
+  description = "The details of the VNET"
 }
 
 variable "subnet_details" {
@@ -29,26 +28,6 @@ variable "subnet_details" {
     subnet_name = string
     address_prefix = string
   }))
-  default = {
-    "AzureFirewallSubnet" = {
-        subnet_name = "AzureFirewallSubnet"
-        address_prefix = "10.10.0.0/26"
-    },
-
-    "GatewaySubnet" = {
-      subnet_name = "GatewaySubnet"
-      address_prefix = "10.10.1.0/27"
-    }
-  }
+  description = "The details of the Subnets"
 }
 
-variable "admin_username" {
-  type        = string
-  default = "azureuser"
-}
-
-variable "admin_password" {
-  type        = string
-  default = "pass@word1234"
-  sensitive   = true
-}

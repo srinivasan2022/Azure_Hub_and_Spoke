@@ -16,9 +16,11 @@ resource "azurerm_storage_account" "storageaccount" {
 
 # Create the Storage Account Container to store the state files
 resource "azurerm_storage_container" "project_state" {
-  name = "project-state-files"
+  name = var.container_name
   storage_account_name = azurerm_storage_account.storageaccount.name
   container_access_type = "private"
 }
+
+# terraform plan "--var-file=variables.tfvars"
 
  

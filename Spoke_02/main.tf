@@ -1,8 +1,7 @@
 # Create the Resource Group
 resource "azurerm_resource_group" "Spoke_02" {
-   for_each = var.rg_details
-   name     = each.value.rg_name
-   location = each.value.rg_location
+   name     = var.rg_name
+   location = var.rg_location
 }
 
 # Create the Virtual Network with address space
@@ -10,8 +9,8 @@ resource "azurerm_virtual_network" "Spoke_02_vnet" {
     for_each = var.vnet_details
     name = each.value.vnet_name
     address_space = [each.value.address_space]
-    resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-    location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
+    resource_group_name = azurerm_resource_group.Spoke_02.name
+    location = azurerm_resource_group.Spoke_02.location
     depends_on = [ azurerm_resource_group.Spoke_02 ]
 }
 
@@ -21,7 +20,7 @@ resource "azurerm_subnet" "subnets" {
   name = each.key
   address_prefixes = [each.value.address_prefix]
   virtual_network_name = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].name
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
+  resource_group_name = azurerm_resource_group.Spoke_02.name
   depends_on = [ azurerm_virtual_network.Spoke_02_vnet ]
 }
 
@@ -29,8 +28,8 @@ resource "azurerm_subnet" "subnets" {
 resource "azurerm_network_security_group" "nsg" {
   for_each = toset(local.subnet_names)
   name = each.key
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
+  resource_group_name = azurerm_resource_group.Spoke_02.name
+  location = azurerm_resource_group.Spoke_02.location
 
   dynamic "security_rule" {                           
      for_each = { for rule in local.rules_csv : rule.name => rule }
@@ -61,8 +60,8 @@ resource "azurerm_subnet_network_security_group_association" "nsg_ass" {
 # Create the Public IP for Application Gateway
 resource "azurerm_public_ip" "public_ip" {
   name                = "AppGW-Pub-IP"
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
+  resource_group_name = azurerm_resource_group.Spoke_02.name
+  location = azurerm_resource_group.Spoke_02.location
   allocation_method   = "Static"
   sku                 = "Standard"
 }
@@ -70,8 +69,8 @@ resource "azurerm_public_ip" "public_ip" {
 # Create the Application for their dedicated subnet
 resource "azurerm_application_gateway" "appGW" {
   name                = "App-Gateway"
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
+  resource_group_name = azurerm_resource_group.Spoke_02.name
+  location = azurerm_resource_group.Spoke_02.location
   sku {
     name     = "Standard_v2"
     tier     = "Standard_v2"
@@ -143,8 +142,8 @@ data "azurerm_key_vault_secret" "vm_admin_password" {
 # Create windows Virtual Machine Scale Set (VMSS)
 resource "azurerm_windows_virtual_machine_scale_set" "vmss" {
   name                = "myvmss"
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
+  resource_group_name = azurerm_resource_group.Spoke_02.name
+  location = azurerm_resource_group.Spoke_02.location
   sku = "Standard_DS1_v2"
   instances = 2
   admin_username = data.azurerm_key_vault_secret.vm_admin_username.value
@@ -203,15 +202,6 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_02" {
   depends_on = [ azurerm_virtual_network.Spoke_02_vnet , data.azurerm_virtual_network.Hub_vnet ]
 }
 
-
-# Creates the Route tables
-resource "azurerm_route_table" "route_table" {
-  name                = "Spoke02-route-table"
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
-  depends_on = [ azurerm_resource_group.Spoke_02 , azurerm_subnet.subnets ]
-}
-
 # # Creates the policy definition
 # resource "azurerm_policy_definition" "rg_policy_def" {
 #   name         = "Spoke02_rg-policy"
@@ -243,7 +233,7 @@ resource "azurerm_route_table" "route_table" {
 # resource "azurerm_policy_assignment" "example" {
 #   name                 = "Spoke02-rg-policy-assignment"
 #   policy_definition_id = azurerm_policy_definition.rg_policy_def.id
-#   scope                = azurerm_resource_group.Spoke_01["Spoke_02_RG"].id
+#   scope                = azurerm_resource_group.Spoke_01.id
 #   display_name         = "Spoke02_RG Policy Assignment"
 #   description          = "Assigning policy to the resource group"
 # }

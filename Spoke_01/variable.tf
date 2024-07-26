@@ -1,13 +1,19 @@
-variable "rg_details" {
-  type = map(object({
-    rg_name = string
-    rg_location = string
-  }))
-  default = {
-    "Spoke_01_RG" = {
-      rg_name = "Spoke_01_RG"
-      rg_location = "East us"
-    }
+variable "rg_name" {
+  type = string
+  description = "The name of the Resource Group"
+  validation {
+    condition = length(var.rg_name>0)
+    error_message = "The name must be provided"
+  }
+
+}
+
+variable "rg_location" {
+  type = string
+  description = "The Location of the Resource Group"
+  validation {
+    condition = length(var.rg_location>0)
+    error_message = "The Location must be provided"
   }
 }
 
@@ -16,12 +22,7 @@ variable "vnet_details" {
     vnet_name = string
     address_space = string
   }))
-  default = {
-    "Spoke_01_vnet" = {
-      vnet_name = "Spoke_01_vnet"
-      address_space = "10.20.0.0/16"
-    }
-  }
+  description = "The details of the VNET"
 }
 
 variable "subnet_details" {
@@ -29,31 +30,46 @@ variable "subnet_details" {
     subnet_name = string
     address_prefix = string
   }))
-  default = {
-    "Web-01" = {
-      subnet_name = "Web-01"
-      address_prefix = "10.20.1.0/24"
-    },
-    
-    "Web-02" = {
-        subnet_name = "Web-02"
-        address_prefix = "10.20.2.0/24"
-    }
-  }
+  description = "The details of the Subnets"
 }
 
 variable "rules_file" {
-    type = string
-    default = "rules.csv"
+  type = string
+  description = "The name of CSV file containing NSG rules"
+  default = "rules.csv"
 }
 
 variable "admin_username" {
   type        = string
-  default = "azureuser"
+  description = "The Username of the User"
 }
 
 variable "admin_password" {
   type        = string
-  default = "pass@word1234"
+  description = "The Password of the User"
   sensitive   = true
 }
+
+variable "Key_vault_name" {
+  type = string
+  description = "The name of the Key Vault"
+}
+
+variable "storage_account_name" {
+  type = string
+  description = "The name of storage account name"
+}
+
+variable "file_share_name" {
+  type = string
+  description = "The name of file share name"
+}
+
+variable "data_disk_name" {
+  type = string
+  description = "The name of Data disk name"
+}
+
+
+
+

@@ -1,27 +1,26 @@
-variable "rg_details" {
-  type = map(object({
-    rg_name = string
-    rg_location = string
-  }))
-  default = {
-    "On_Premises_RG" = {
-      rg_name = "On_Premises_RG"
-      rg_location = "central india"
-    }
+variable "rg_name" {
+  type = string
+  description = "The name of the Resource Group"
+  validation {
+    condition = length(var.rg_name>0)
+    error_message = "The name must be provided"
+  }
+
+}
+variable "rg_location" {
+  type = string
+  description = "The Location of the Resource Group"
+  validation {
+    condition = length(var.rg_location>0)
+    error_message = "The Location must be provided"
   }
 }
-
 variable "vnet_details" {
   type = map(object({
     vnet_name = string
     address_space = string
   }))
-  default = {
-    "On_Premises_vnet" = {
-      vnet_name = "On_Premises_vnet"
-      address_space = "10.100.0.0/16"
-    }
-  }
+  description = "The details of the VNET"
 }
 
 variable "subnet_details" {
@@ -29,27 +28,5 @@ variable "subnet_details" {
     subnet_name = string
     address_prefix = string
   }))
-  default = {
-    "GatewaySubnet" = {
-      subnet_name = "GatewaySubnet"
-      address_prefix = "10.100.1.0/24"
-    },
-    
-    "OnPremSubnet" = {
-        subnet_name = "OnPremSubnet"
-        address_prefix = "10.100.2.0/24"
-    }
-  }
-}
-
-
-variable "admin_username" {
-  type        = string
-  default = "azureuser"
-}
-
-variable "admin_password" {
-  type        = string
-  default = "pass@word1234"
-  sensitive   = true
+  description = "The details of the Subnets"
 }

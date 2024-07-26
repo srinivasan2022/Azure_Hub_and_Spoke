@@ -1,8 +1,7 @@
 # Create the Resource Group
 resource "azurerm_resource_group" "Hub" {
-   for_each = var.rg_details
-   name     = each.value.rg_name
-   location = each.value.rg_location 
+   name     = var.rg_name
+   location = var.rg_location
 }
 
 # Create the Virtual Network with address space
@@ -10,8 +9,8 @@ resource "azurerm_virtual_network" "Hub_vnet" {
     for_each = var.vnet_details
     name = each.value.vnet_name
     address_space = [each.value.address_space]
-    resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
-    location = azurerm_resource_group.Hub["Hub_RG"].location
+    resource_group_name = azurerm_resource_group.Hub.name
+    location = azurerm_resource_group.Hub.location
     depends_on = [ azurerm_resource_group.Hub ]
 }
 
@@ -29,8 +28,8 @@ resource "azurerm_subnet" "subnets" {
 resource "azurerm_public_ip" "public_ips" {
   for_each = toset(local.subnet_names)
   name = "${each.key}-IP"
-  location            = azurerm_resource_group.Hub["Hub_RG"].location
-  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+  location            = azurerm_resource_group.Hub.location
+  resource_group_name = azurerm_resource_group.Hub.name
   allocation_method   = "Static"
   sku                 = "Standard"
   depends_on = [ azurerm_resource_group.Hub ]
@@ -39,8 +38,8 @@ resource "azurerm_public_ip" "public_ips" {
 # Create the Azure Firewall policy
 resource "azurerm_firewall_policy" "firewall_policy" {
   name                = "example-firewall-policy"
-  location            = azurerm_resource_group.Hub["Hub_RG"].location
-  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+  location            = azurerm_resource_group.Hub.location
+  resource_group_name = azurerm_resource_group.Hub.name
   sku = "Standard"
   depends_on = [ azurerm_resource_group.Hub , azurerm_subnet.subnets ]
 }
@@ -48,8 +47,8 @@ resource "azurerm_firewall_policy" "firewall_policy" {
 # Create the Azure Firewall to control the outbound traffic
 resource "azurerm_firewall" "firewall" {
   name                = "Firewall"
-  location            = azurerm_resource_group.Hub["Hub_RG"].location
-  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+  location            = azurerm_resource_group.Hub.location
+  resource_group_name = azurerm_resource_group.Hub.name
    sku_name = "AZFW_VNet"
    sku_tier = "Standard"
 
@@ -66,8 +65,8 @@ resource "azurerm_firewall" "firewall" {
 # Create the IP Group to store Spoke Ip addresses
 resource "azurerm_ip_group" "Ip_group" {
   name                = "Spoke-Ip-Group"
-  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
-  location            = azurerm_resource_group.Hub["Hub_RG"].location
+  resource_group_name = azurerm_resource_group.Hub.name
+  location            = azurerm_resource_group.Hub.location
   cidrs = [ "10.10.0.0/16" , "10.20.0.0/16" , "10.30.0.0/16" ]
   depends_on = [ azurerm_resource_group.Hub ]
 }
@@ -153,8 +152,8 @@ resource "azurerm_firewall_policy_rule_collection_group" "fw_policy_rule_collect
 # Create the VPN Gateway in their Specified Subnet
 resource "azurerm_virtual_network_gateway" "gateway" {
   name                = "Hub-vpn-gateway"
-  location            = azurerm_resource_group.Hub["Hub_RG"].location
-  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+  location            = azurerm_resource_group.Hub.location
+  resource_group_name = azurerm_resource_group.Hub.name
  
   type     = "Vpn"
   vpn_type = "RouteBased"
@@ -187,8 +186,8 @@ data "azurerm_virtual_network" "On_Premises_vnet" {
 # Create the Local Network Gateway for VPN Gateway
 resource "azurerm_local_network_gateway" "Hub_local_gateway" {
   name                = "Hub-To-OnPremises"
-  location            = azurerm_resource_group.Hub["Hub_RG"].location
-  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+  resource_group_name = azurerm_virtual_network_gateway.gateway.resource_group_name
+  location = azurerm_virtual_network_gateway.gateway.location
   gateway_address     = data.azurerm_public_ip.OnPrem-VPN-GW-public-ip.ip_address        # TODO:  Replace the Hub-VPN Public-IP
   address_space       = [data.azurerm_virtual_network.On_Premises_vnet.address_space[0]]  # TODO:  Replace the OnPremises Vnet address space
   depends_on = [ azurerm_public_ip.public_ips , azurerm_virtual_network_gateway.gateway , 
@@ -198,8 +197,8 @@ resource "azurerm_local_network_gateway" "Hub_local_gateway" {
  # Create the VPN-Connection for Connecting the Networks
 resource "azurerm_virtual_network_gateway_connection" "vpn_connection" { 
   name                           = "Hub-OnPremises-vpn-connection"
-  location            = azurerm_resource_group.Hub["Hub_RG"].location
-  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+  resource_group_name = azurerm_virtual_network_gateway.gateway.resource_group_name
+  location = azurerm_virtual_network_gateway.gateway.location
   virtual_network_gateway_id     = azurerm_virtual_network_gateway.gateway.id
   local_network_gateway_id       = azurerm_local_network_gateway.Hub_local_gateway.id
   type                           = "IPsec"
@@ -212,15 +211,15 @@ resource "azurerm_virtual_network_gateway_connection" "vpn_connection" {
 # Creates the route table
 resource "azurerm_route_table" "route_table" {
   name                = "Hub-Gateway-RT"
-  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
-  location = azurerm_resource_group.Hub["Hub_RG"].location
+  resource_group_name = azurerm_resource_group.Hub.name
+  location = azurerm_resource_group.Hub.location
   depends_on = [ azurerm_resource_group.Hub , azurerm_subnet.subnets ]
 }
 
 # Creates the route in the route table
 resource "azurerm_route" "route_02" {
   name                   = "ToSpoke01"
-  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+  resource_group_name = azurerm_route_table.route_table.resource_group_name
   route_table_name = azurerm_route_table.route_table.name
   address_prefix = "10.20.0.0/16"     # destnation network address space
   next_hop_type          = "VirtualAppliance" 
@@ -231,7 +230,7 @@ resource "azurerm_route" "route_02" {
 # Associate the route table with the their subnet
 resource "azurerm_subnet_route_table_association" "RT-ass" {
    subnet_id                 = azurerm_subnet.subnets["GatewaySubnet"].id
-  route_table_id = azurerm_route_table.route_table.id
+   route_table_id = azurerm_route_table.route_table.id
   depends_on = [ azurerm_subnet.subnets , azurerm_route_table.route_table ]
 }
 
