@@ -7,14 +7,13 @@
 - 5.Finally we have to establish the virtual network integration to connect the app services.
 
 ## Architecture Diagram :
-![SPOKE\_03](https://github.com/user-attachments/assets/72e59f64-8d17-41ad-948f-5cfb233de07e)
+![SPOKE\_03](https://github.com/user-attachments/assets/8864b991-0f53-4b0b-8a53-9d7a1e02b38f)
 
 ```hcl
 # Create a resource group
 resource "azurerm_resource_group" "Spoke_03" {
-  for_each = var.rg_details
-  name     = each.value.rg_name
-  location = each.value.rg_location
+  name     = var.rg_name
+  location = var.rg_location
 }
 
 # Create the Virtual Network with address space
@@ -22,8 +21,8 @@ resource "azurerm_virtual_network" "Spoke_03_vnet" {
     for_each = var.vnet_details
     name = each.value.vnet_name
     address_space = [each.value.address_space]
-    resource_group_name = azurerm_resource_group.Spoke_03["Spoke_03_RG"].name
-    location = azurerm_resource_group.Spoke_03["Spoke_03_RG"].location
+    resource_group_name = azurerm_resource_group.Spoke_03.name
+    location = azurerm_resource_group.Spoke_03.location
     depends_on = [ azurerm_resource_group.Spoke_03 ]
 }
 
@@ -33,7 +32,7 @@ resource "azurerm_subnet" "subnets" {
   name = each.key
   address_prefixes = [each.value.address_prefix]
   virtual_network_name = azurerm_virtual_network.Spoke_03_vnet["Spoke_03_vnet"].name
-  resource_group_name = azurerm_resource_group.Spoke_03["Spoke_03_RG"].name
+  resource_group_name = azurerm_resource_group.Spoke_03.name
   delegation {
     name = "appservice_delegation"
     service_delegation {
@@ -48,9 +47,9 @@ resource "azurerm_subnet" "subnets" {
  
 # Create an App Service Plan
 resource "azurerm_app_service_plan" "plan" {
-  name                = "appserviceplan"
-  location            = azurerm_resource_group.Spoke_03["Spoke_03_RG"].location
-  resource_group_name = azurerm_resource_group.Spoke_03["Spoke_03_RG"].name
+  name                = var.app_service_plan_name
+  location            = azurerm_resource_group.Spoke_03.location
+  resource_group_name = azurerm_resource_group.Spoke_03.name
   sku {
     tier = "Standard"
     size = "S1"
@@ -60,9 +59,9 @@ resource "azurerm_app_service_plan" "plan" {
 
 # Create the Web App
 resource "azurerm_app_service" "web_app" {
-  name                = "my-webapp1603"
-  location            = azurerm_resource_group.Spoke_03["Spoke_03_RG"].location
-  resource_group_name = azurerm_resource_group.Spoke_03["Spoke_03_RG"].name
+  name                = var.web_app_name
+  location            = azurerm_resource_group.Spoke_03.location
+  resource_group_name = azurerm_resource_group.Spoke_03.name
   app_service_plan_id = azurerm_app_service_plan.plan.id
   depends_on = [ azurerm_resource_group.Spoke_03 , azurerm_app_service_plan.plan ]
 }
@@ -101,7 +100,7 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_03" {
   remote_virtual_network_id = azurerm_virtual_network.Spoke_03_vnet["Spoke_03_vnet"].id
   allow_virtual_network_access = true
   allow_forwarded_traffic   = true
-  allow_gateway_transit     = false
+  allow_gateway_transit     = true
   use_remote_gateways       = false
   depends_on = [ azurerm_virtual_network.Spoke_03_vnet , data.azurerm_virtual_network.Hub_vnet ]
 }
@@ -138,7 +137,7 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_03" {
 # resource "azurerm_policy_assignment" "example" {
 #   name                 = "Spoke03-rg-policy-assignment"
 #   policy_definition_id = azurerm_policy_definition.rg_policy_def.id
-#   scope                = azurerm_resource_group.Spoke_01["Spoke_03_RG"].id
+#   scope                = azurerm_resource_group.Spoke_03.id
 #   display_name         = "Spoke03_RG Policy Assignment"
 #   description          = "Assigning policy to the resource group"
 # }
@@ -176,39 +175,23 @@ The following resources are used by this module:
 <!-- markdownlint-disable MD013 -->
 ## Required Inputs
 
-No required inputs.
+The following input variables are required:
 
-## Optional Inputs
+### <a name="input_rg_location"></a> [rg\_location](#input\_rg\_location)
 
-The following input variables are optional (have default values):
+Description: The Location of the Resource Group
 
-### <a name="input_rg_details"></a> [rg\_details](#input\_rg\_details)
+Type: `string`
 
-Description: n/a
+### <a name="input_rg_name"></a> [rg\_name](#input\_rg\_name)
 
-Type:
+Description: The name of the Resource Group
 
-```hcl
-map(object({
-    rg_name = string
-    rg_location = string
-  }))
-```
-
-Default:
-
-```json
-{
-  "Spoke_03_RG": {
-    "rg_location": "East us",
-    "rg_name": "Spoke_03_RG"
-  }
-}
-```
+Type: `string`
 
 ### <a name="input_subnet_details"></a> [subnet\_details](#input\_subnet\_details)
 
-Description: n/a
+Description: The details of the Subnets
 
 Type:
 
@@ -219,20 +202,9 @@ map(object({
   }))
 ```
 
-Default:
-
-```json
-{
-  "AppServiceSubnet": {
-    "address_prefix": "10.40.0.0/27",
-    "subnet_name": "AppServiceSubnet"
-  }
-}
-```
-
 ### <a name="input_vnet_details"></a> [vnet\_details](#input\_vnet\_details)
 
-Description: n/a
+Description: The details of the VNET
 
 Type:
 
@@ -243,16 +215,25 @@ map(object({
   }))
 ```
 
-Default:
+## Optional Inputs
 
-```json
-{
-  "Spoke_03_vnet": {
-    "address_space": "10.40.0.0/16",
-    "vnet_name": "Spoke_03_vnet"
-  }
-}
-```
+The following input variables are optional (have default values):
+
+### <a name="input_app_service_plan_name"></a> [app\_service\_plan\_name](#input\_app\_service\_plan\_name)
+
+Description: n/a
+
+Type: `string`
+
+Default: `"The name of app service plan"`
+
+### <a name="input_web_app_name"></a> [web\_app\_name](#input\_web\_app\_name)
+
+Description: n/a
+
+Type: `string`
+
+Default: `"The name of web app name"`
 
 ## Outputs
 

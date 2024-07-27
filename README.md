@@ -15,7 +15,7 @@
 - 11.All logs should go to Log Analytic workspace.
 
 ## Architecture Diagram :
-![Overall](https://github.com/user-attachments/assets/54a516e2-14c1-4994-bb23-d3478c649ed2)
+![Overall](https://github.com/user-attachments/assets/bec3d8d9-ecf3-4ddf-8ffc-b59faf61ec66)
 
 ### 1.On_Premises network :
 

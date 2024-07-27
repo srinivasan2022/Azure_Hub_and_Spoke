@@ -9,14 +9,13 @@
 - 7.We have to establish the peering between Hub and Spoke\_02.
 
 ## Architecture Diagram :
-![SPOKE\_02](https://github.com/srinivasan2022/Project/assets/118502121/d77db564-7101-4009-a7ca-c757dc5183eb)
+![SPOKE\_02](https://github.com/user-attachments/assets/8f4dbe12-420c-4fa0-bf92-367976fdf9e4)
 
 ```hcl
 # Create the Resource Group
 resource "azurerm_resource_group" "Spoke_02" {
-   for_each = var.rg_details
-   name     = each.value.rg_name
-   location = each.value.rg_location
+   name     = var.rg_name
+   location = var.rg_location
 }
 
 # Create the Virtual Network with address space
@@ -24,8 +23,8 @@ resource "azurerm_virtual_network" "Spoke_02_vnet" {
     for_each = var.vnet_details
     name = each.value.vnet_name
     address_space = [each.value.address_space]
-    resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-    location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
+    resource_group_name = azurerm_resource_group.Spoke_02.name
+    location = azurerm_resource_group.Spoke_02.location
     depends_on = [ azurerm_resource_group.Spoke_02 ]
 }
 
@@ -35,7 +34,7 @@ resource "azurerm_subnet" "subnets" {
   name = each.key
   address_prefixes = [each.value.address_prefix]
   virtual_network_name = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].name
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
+  resource_group_name = azurerm_resource_group.Spoke_02.name
   depends_on = [ azurerm_virtual_network.Spoke_02_vnet ]
 }
 
@@ -43,8 +42,8 @@ resource "azurerm_subnet" "subnets" {
 resource "azurerm_network_security_group" "nsg" {
   for_each = toset(local.subnet_names)
   name = each.key
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
+  resource_group_name = azurerm_resource_group.Spoke_02.name
+  location = azurerm_resource_group.Spoke_02.location
 
   dynamic "security_rule" {                           
      for_each = { for rule in local.rules_csv : rule.name => rule }
@@ -75,8 +74,8 @@ resource "azurerm_subnet_network_security_group_association" "nsg_ass" {
 # Create the Public IP for Application Gateway
 resource "azurerm_public_ip" "public_ip" {
   name                = "AppGW-Pub-IP"
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
+  resource_group_name = azurerm_resource_group.Spoke_02.name
+  location = azurerm_resource_group.Spoke_02.location
   allocation_method   = "Static"
   sku                 = "Standard"
 }
@@ -84,8 +83,8 @@ resource "azurerm_public_ip" "public_ip" {
 # Create the Application for their dedicated subnet
 resource "azurerm_application_gateway" "appGW" {
   name                = "App-Gateway"
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
+  resource_group_name = azurerm_resource_group.Spoke_02.name
+  location = azurerm_resource_group.Spoke_02.location
   sku {
     name     = "Standard_v2"
     tier     = "Standard_v2"
@@ -157,8 +156,8 @@ data "azurerm_key_vault_secret" "vm_admin_password" {
 # Create windows Virtual Machine Scale Set (VMSS)
 resource "azurerm_windows_virtual_machine_scale_set" "vmss" {
   name                = "myvmss"
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
+  resource_group_name = azurerm_resource_group.Spoke_02.name
+  location = azurerm_resource_group.Spoke_02.location
   sku = "Standard_DS1_v2"
   instances = 2
   admin_username = data.azurerm_key_vault_secret.vm_admin_username.value
@@ -212,18 +211,9 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_02" {
   remote_virtual_network_id = azurerm_virtual_network.Spoke_02_vnet["Spoke_02_vnet"].id
   allow_virtual_network_access = true
   allow_forwarded_traffic   = true
-  allow_gateway_transit     = false
+  allow_gateway_transit     = true
   use_remote_gateways       = false
   depends_on = [ azurerm_virtual_network.Spoke_02_vnet , data.azurerm_virtual_network.Hub_vnet ]
-}
-
-
-# Creates the Route tables
-resource "azurerm_route_table" "route_table" {
-  name                = "Spoke02-route-table"
-  resource_group_name = azurerm_resource_group.Spoke_02["Spoke_02_RG"].name
-  location = azurerm_resource_group.Spoke_02["Spoke_02_RG"].location
-  depends_on = [ azurerm_resource_group.Spoke_02 , azurerm_subnet.subnets ]
 }
 
 # # Creates the policy definition
@@ -257,7 +247,7 @@ resource "azurerm_route_table" "route_table" {
 # resource "azurerm_policy_assignment" "example" {
 #   name                 = "Spoke02-rg-policy-assignment"
 #   policy_definition_id = azurerm_policy_definition.rg_policy_def.id
-#   scope                = azurerm_resource_group.Spoke_01["Spoke_02_RG"].id
+#   scope                = azurerm_resource_group.Spoke_01.id
 #   display_name         = "Spoke02_RG Policy Assignment"
 #   description          = "Assigning policy to the resource group"
 # }
@@ -288,7 +278,6 @@ The following resources are used by this module:
 - [azurerm_network_security_group.nsg](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_security_group) (resource)
 - [azurerm_public_ip.public_ip](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/public_ip) (resource)
 - [azurerm_resource_group.Spoke_02](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) (resource)
-- [azurerm_route_table.route_table](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/route_table) (resource)
 - [azurerm_subnet.subnets](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet) (resource)
 - [azurerm_subnet_network_security_group_association.nsg_ass](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet_network_security_group_association) (resource)
 - [azurerm_virtual_network.Spoke_02_vnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network) (resource)
@@ -303,7 +292,45 @@ The following resources are used by this module:
 <!-- markdownlint-disable MD013 -->
 ## Required Inputs
 
-No required inputs.
+The following input variables are required:
+
+### <a name="input_rg_location"></a> [rg\_location](#input\_rg\_location)
+
+Description: The Location of the Resource Group
+
+Type: `string`
+
+### <a name="input_rg_name"></a> [rg\_name](#input\_rg\_name)
+
+Description: The name of the Resource Group
+
+Type: `string`
+
+### <a name="input_subnet_details"></a> [subnet\_details](#input\_subnet\_details)
+
+Description: The details of the Subnets
+
+Type:
+
+```hcl
+map(object({
+    subnet_name = string
+    address_prefix = string
+  }))
+```
+
+### <a name="input_vnet_details"></a> [vnet\_details](#input\_vnet\_details)
+
+Description: The details of the VNET
+
+Type:
+
+```hcl
+map(object({
+    vnet_name = string
+    address_space = string
+  }))
+```
 
 ## Optional Inputs
 
@@ -325,89 +352,13 @@ Type: `string`
 
 Default: `"azureuser"`
 
-### <a name="input_rg_details"></a> [rg\_details](#input\_rg\_details)
-
-Description: n/a
-
-Type:
-
-```hcl
-map(object({
-    rg_name = string
-    rg_location = string
-  }))
-```
-
-Default:
-
-```json
-{
-  "Spoke_02_RG": {
-    "rg_location": "East us",
-    "rg_name": "Spoke_02_RG"
-  }
-}
-```
-
 ### <a name="input_rules_file"></a> [rules\_file](#input\_rules\_file)
 
-Description: n/a
+Description: The name of CSV file containing NSG rules
 
 Type: `string`
 
 Default: `"rules.csv"`
-
-### <a name="input_subnet_details"></a> [subnet\_details](#input\_subnet\_details)
-
-Description: n/a
-
-Type:
-
-```hcl
-map(object({
-    subnet_name = string
-    address_prefix = string
-  }))
-```
-
-Default:
-
-```json
-{
-  "App-GW": {
-    "address_prefix": "10.30.1.0/24",
-    "subnet_name": "App-GW"
-  },
-  "VMSS": {
-    "address_prefix": "10.30.2.0/24",
-    "subnet_name": "VMSS"
-  }
-}
-```
-
-### <a name="input_vnet_details"></a> [vnet\_details](#input\_vnet\_details)
-
-Description: n/a
-
-Type:
-
-```hcl
-map(object({
-    vnet_name = string
-    address_space = string
-  }))
-```
-
-Default:
-
-```json
-{
-  "Spoke_02_vnet": {
-    "address_space": "10.30.0.0/16",
-    "vnet_name": "Spoke_02_vnet"
-  }
-}
-```
 
 ## Outputs
 

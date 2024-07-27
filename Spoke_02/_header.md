@@ -8,4 +8,4 @@
 - 7.We have to establish the peering between Hub and Spoke_02.
 
 ## Architecture Diagram :
-![SPOKE_02](https://github.com/srinivasan2022/Project/assets/118502121/d77db564-7101-4009-a7ca-c757dc5183eb)
+![SPOKE_02](https://github.com/user-attachments/assets/8f4dbe12-420c-4fa0-bf92-367976fdf9e4)

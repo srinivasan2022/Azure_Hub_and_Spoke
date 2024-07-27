@@ -6,4 +6,4 @@
 - 5.Finally we have to establish the virtual network integration to connect the app services.
 
 ## Architecture Diagram :
-![SPOKE_03](https://github.com/user-attachments/assets/72e59f64-8d17-41ad-948f-5cfb233de07e)
+![SPOKE_03](https://github.com/user-attachments/assets/8864b991-0f53-4b0b-8a53-9d7a1e02b38f)

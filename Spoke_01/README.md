@@ -11,7 +11,7 @@
 - 9.We need to create the Azure Key valut service to store the VM username and password.
 
 ## Architecture Diagram :
-![SPOKE\_01](https://github.com/user-attachments/assets/942a5d88-25fe-4b38-84ef-861488440f05)
+![SPOKE\_01](https://github.com/user-attachments/assets/d7a7fa0b-6fda-4bc4-b399-f1c2347abeb4)
 
 ```hcl
 data "azurerm_client_config" "current" {}
@@ -19,9 +19,8 @@ data "azuread_client_config" "current" {}
 
 # Create the Resource Group
 resource "azurerm_resource_group" "Spoke_01" {
-   for_each = var.rg_details
-   name     = each.value.rg_name
-   location = each.value.rg_location
+   name     = var.rg_name
+   location = var.rg_location
 }
 
 # Create the Virtual Network with address space
@@ -29,8 +28,8 @@ resource "azurerm_virtual_network" "Spoke_01_vnet" {
     for_each = var.vnet_details
     name = each.value.vnet_name
     address_space = [each.value.address_space]
-    resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-    location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+    resource_group_name = azurerm_resource_group.Spoke_01.name
+    location = azurerm_resource_group.Spoke_01.location
     depends_on = [ azurerm_resource_group.Spoke_01 ]
 }
 
@@ -40,7 +39,7 @@ resource "azurerm_subnet" "subnets" {
   name = each.key
   address_prefixes = [each.value.address_prefix]
   virtual_network_name = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].name
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
+  resource_group_name = azurerm_resource_group.Spoke_01.name
   depends_on = [ azurerm_virtual_network.Spoke_01_vnet ]
 }
 
@@ -48,8 +47,8 @@ resource "azurerm_subnet" "subnets" {
 resource "azurerm_network_security_group" "nsg" {
   for_each = toset(local.subnet_names)
   name = each.key
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  resource_group_name = azurerm_resource_group.Spoke_01.name
+  location = azurerm_resource_group.Spoke_01.location
 
   dynamic "security_rule" {                           
      for_each = { for rule in local.rules_csv : rule.name => rule }
@@ -81,8 +80,8 @@ resource "azurerm_subnet_network_security_group_association" "nsg_ass" {
 resource "azurerm_network_interface" "subnet_nic" {
   for_each = toset(local.subnet_names)
   name                = "${each.key}-NIC"
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  resource_group_name = azurerm_resource_group.Spoke_01.name
+  location = azurerm_resource_group.Spoke_01.location
   
   ip_configuration {
     name                          = "internal"
@@ -94,9 +93,9 @@ resource "azurerm_network_interface" "subnet_nic" {
 
 # Creates the Azure Key vault to store the VM username and password
 resource "azurerm_key_vault" "Key_vault" {
-  name                        = "MyKeyVault1603"
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  name                        = var.Key_vault_name
+  resource_group_name = azurerm_resource_group.Spoke_01.name
+  location = azurerm_resource_group.Spoke_01.location
   sku_name                    = "standard"
   tenant_id                   = data.azurerm_client_config.current.tenant_id
   purge_protection_enabled    = true
@@ -138,13 +137,11 @@ resource "azurerm_key_vault_secret" "vm_admin_password" {
 # Create the Virtual Machines(VM) and assign the NIC to specific VMs
 resource "azurerm_windows_virtual_machine" "VMs" {
   name                  = "${azurerm_subnet.subnets[local.nsg_names[each.key]].name}-VM"
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  resource_group_name = azurerm_resource_group.Spoke_01.name
+  location = azurerm_resource_group.Spoke_01.location
   size                  = "Standard_DS1_v2"
-  # admin_username        =  azurerm_key_vault_secret.vm_admin_username.value  
-  # admin_password        =  azurerm_key_vault_secret.vm_admin_password.value  
-  admin_username = var.admin_username
-  admin_password = var.admin_password
+   admin_username        =  azurerm_key_vault_secret.vm_admin_username.value  
+   admin_password        =  azurerm_key_vault_secret.vm_admin_password.value  
    for_each = {for idx , nic in azurerm_network_interface.subnet_nic : idx => nic.id}
   # for_each = local.NIC_Names
   network_interface_ids = [each.value]
@@ -167,9 +164,9 @@ resource "azurerm_windows_virtual_machine" "VMs" {
 
 # Create the Storage account for FileShare
 resource "azurerm_storage_account" "storage-account" {
-  name                     = "storageaccount160302"
-  resource_group_name =     azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  location                 = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  name                     = var.storage_account_name
+  resource_group_name =     azurerm_resource_group.Spoke_01.name
+  location                 = azurerm_resource_group.Spoke_01.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
   depends_on = [ azurerm_resource_group.Spoke_01  ]
@@ -177,7 +174,7 @@ resource "azurerm_storage_account" "storage-account" {
  
 # Create the FileShare in Storage account
 resource "azurerm_storage_share" "fileshare" {
-  name                 = "fileshare01"
+  name                 = var.file_share_name
   storage_account_name = azurerm_storage_account.storage-account.name
   quota                = 5
   depends_on = [ azurerm_resource_group.Spoke_01 , azurerm_storage_account.storage-account ]
@@ -203,9 +200,9 @@ resource "azurerm_virtual_machine_extension" "your-extension" {
 
 # Create the data disk
 resource "azurerm_managed_disk" "data_disk" {
-  name                 = "vm-datadisk"
-  resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-  location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+  name                 = var.data_disk_name
+  resource_group_name = azurerm_resource_group.Spoke_01.name
+  location = azurerm_resource_group.Spoke_01.location
   storage_account_type = "Standard_LRS"
   create_option        = "Empty"
   disk_size_gb         = "4"
@@ -293,8 +290,8 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_01" {
 # # Creates the Log Analytics workspace 
 # resource "azurerm_log_analytics_workspace" "log_analytics" {
 #   name                = "example-law"
-#   resource_group_name = azurerm_resource_group.Spoke_01["Spoke_01_RG"].name
-#   location = azurerm_resource_group.Spoke_01["Spoke_01_RG"].location
+#   resource_group_name = azurerm_resource_group.Spoke_01.name
+#   location = azurerm_resource_group.Spoke_01.location
 #   sku                 = "PerGB2018"
 #   retention_in_days   = 10
 # }
@@ -419,63 +416,59 @@ The following resources are used by this module:
 <!-- markdownlint-disable MD013 -->
 ## Required Inputs
 
-No required inputs.
+The following input variables are required:
 
-## Optional Inputs
+### <a name="input_Key_vault_name"></a> [Key\_vault\_name](#input\_Key\_vault\_name)
 
-The following input variables are optional (have default values):
+Description: The name of the Key Vault
+
+Type: `string`
 
 ### <a name="input_admin_password"></a> [admin\_password](#input\_admin\_password)
 
-Description: n/a
+Description: The Password of the User
 
 Type: `string`
-
-Default: `"pass@word1234"`
 
 ### <a name="input_admin_username"></a> [admin\_username](#input\_admin\_username)
 
-Description: n/a
+Description: The Username of the User
 
 Type: `string`
 
-Default: `"azureuser"`
+### <a name="input_data_disk_name"></a> [data\_disk\_name](#input\_data\_disk\_name)
 
-### <a name="input_rg_details"></a> [rg\_details](#input\_rg\_details)
-
-Description: n/a
-
-Type:
-
-```hcl
-map(object({
-    rg_name = string
-    rg_location = string
-  }))
-```
-
-Default:
-
-```json
-{
-  "Spoke_01_RG": {
-    "rg_location": "East us",
-    "rg_name": "Spoke_01_RG"
-  }
-}
-```
-
-### <a name="input_rules_file"></a> [rules\_file](#input\_rules\_file)
-
-Description: n/a
+Description: The name of Data disk name
 
 Type: `string`
 
-Default: `"rules.csv"`
+### <a name="input_file_share_name"></a> [file\_share\_name](#input\_file\_share\_name)
+
+Description: The name of file share name
+
+Type: `string`
+
+### <a name="input_rg_location"></a> [rg\_location](#input\_rg\_location)
+
+Description: The Location of the Resource Group
+
+Type: `string`
+
+### <a name="input_rg_name"></a> [rg\_name](#input\_rg\_name)
+
+Description: The name of the Resource Group
+
+Type: `string`
+
+### <a name="input_storage_account_name"></a> [storage\_account\_name](#input\_storage\_account\_name)
+
+Description: The name of storage account name
+
+Type: `string`
 
 ### <a name="input_subnet_details"></a> [subnet\_details](#input\_subnet\_details)
 
-Description: n/a
+Description: The details of the Subnets
 
 Type:
 
@@ -486,24 +479,9 @@ map(object({
   }))
 ```
 
-Default:
-
-```json
-{
-  "Web-01": {
-    "address_prefix": "10.20.1.0/24",
-    "subnet_name": "Web-01"
-  },
-  "Web-02": {
-    "address_prefix": "10.20.2.0/24",
-    "subnet_name": "Web-02"
-  }
-}
-```
-
 ### <a name="input_vnet_details"></a> [vnet\_details](#input\_vnet\_details)
 
-Description: n/a
+Description: The details of the VNET
 
 Type:
 
@@ -514,16 +492,17 @@ map(object({
   }))
 ```
 
-Default:
+## Optional Inputs
 
-```json
-{
-  "Spoke_01_vnet": {
-    "address_space": "10.20.0.0/16",
-    "vnet_name": "Spoke_01_vnet"
-  }
-}
-```
+The following input variables are optional (have default values):
+
+### <a name="input_rules_file"></a> [rules\_file](#input\_rules\_file)
+
+Description: The name of CSV file containing NSG rules
+
+Type: `string`
+
+Default: `"rules.csv"`
 
 ## Outputs
 

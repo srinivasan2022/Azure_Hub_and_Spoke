@@ -7,14 +7,13 @@
 - 5.We should create the Local Network Gateway and Connection service for establish the connection between On\_premises and Hub.
 
 ## Architecture Diagram :
-![On\_Premises](https://github.com/srinivasan2022/Project/assets/118502121/8476d917-a19f-4ad5-a6cf-323995f9039e)
+![On\_Premises](https://github.com/user-attachments/assets/0baf48b4-dbc2-437d-9ded-f530f33f23d9)
 
 ```hcl
 # Create the Resource Group
 resource "azurerm_resource_group" "On_Premises" {
-   for_each = var.rg_details
-   name     = each.value.rg_name
-   location = each.value.rg_location
+   name     = var.rg_name
+   location = var.rg_location
 }
 
 # Create the Virtual Network with address space
@@ -22,8 +21,8 @@ resource "azurerm_virtual_network" "On_Premises_vnet" {
     for_each = var.vnet_details
     name = each.value.vnet_name
     address_space = [each.value.address_space]
-    resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
-    location = azurerm_resource_group.On_Premises["On_Premises_RG"].location
+    resource_group_name = azurerm_resource_group.On_Premises.name
+    location = azurerm_resource_group.On_Premises.location
     depends_on = [ azurerm_resource_group.On_Premises ]
 }
 
@@ -33,15 +32,15 @@ resource "azurerm_subnet" "subnets" {
   name = each.key
   address_prefixes = [each.value.address_prefix]
   virtual_network_name = azurerm_virtual_network.On_Premises_vnet["On_Premises_vnet"].name
-  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  resource_group_name = azurerm_resource_group.On_Premises.name
   depends_on = [ azurerm_virtual_network.On_Premises_vnet ]
 }
 
 # Create the Public IP for VPN Gateway 
 resource "azurerm_public_ip" "public_ips" {
   name = "OnPremise-VPN-${azurerm_subnet.subnets["GatewaySubnet"].name}-IP"  
-  location            = azurerm_resource_group.On_Premises["On_Premises_RG"].location
-  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  location            = azurerm_resource_group.On_Premises.location
+  resource_group_name = azurerm_resource_group.On_Premises.name
   allocation_method   = "Static"
   sku                 = "Standard"
   depends_on = [ azurerm_resource_group.On_Premises ]
@@ -50,8 +49,8 @@ resource "azurerm_public_ip" "public_ips" {
 # Create the VPN Gateway in their Specified Subnet
 resource "azurerm_virtual_network_gateway" "gateway" {
   name                = "OnPremise-VPN-gateway"
-  location            = azurerm_resource_group.On_Premises["On_Premises_RG"].location
-  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  location            = azurerm_resource_group.On_Premises.location
+  resource_group_name = azurerm_resource_group.On_Premises.name
  
   type     = "Vpn"
   vpn_type = "RouteBased"
@@ -83,8 +82,8 @@ data "azurerm_virtual_network" "Hub_vnet" {
 # Create the Local Network Gateway for VPN Gateway
 resource "azurerm_local_network_gateway" "OnPremises_local_gateway" {
   name                = "OnPremises-To-Hub"
-  location            = azurerm_resource_group.On_Premises["On_Premises_RG"].location
-  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  location            = azurerm_virtual_network_gateway.gateway.resource_group_name
+  resource_group_name = azurerm_virtual_network_gateway.gateway.location
   gateway_address     = data.azurerm_public_ip.Hub-VPN-GW-public-ip.ip_address     # Replace the Hub-VPN Public-IP
   address_space       = [data.azurerm_virtual_network.Hub_vnet.address_space[0]]   # Replace the Hub-Vnet address space
   depends_on = [ azurerm_public_ip.public_ips , azurerm_virtual_network_gateway.gateway ,
@@ -94,8 +93,8 @@ resource "azurerm_local_network_gateway" "OnPremises_local_gateway" {
 # Create the VPN-Connection for Connecting the Networks
 resource "azurerm_virtual_network_gateway_connection" "vpn_connection" {
   name                = "OnPremises-Hub-vpn-connection"
-  location            = azurerm_resource_group.On_Premises["On_Premises_RG"].location
-  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  location            = azurerm_virtual_network_gateway.gateway.resource_group_name
+  resource_group_name = azurerm_virtual_network_gateway.gateway.location
   virtual_network_gateway_id     = azurerm_virtual_network_gateway.gateway.id
   local_network_gateway_id       = azurerm_local_network_gateway.OnPremises_local_gateway.id
   type                           = "IPsec"
@@ -109,8 +108,8 @@ resource "azurerm_virtual_network_gateway_connection" "vpn_connection" {
 # Create the Network Interface card for Virtual Machines
 resource "azurerm_network_interface" "subnet_nic" {
   name                = "DB-NIC"
-  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
-  location = azurerm_resource_group.On_Premises["On_Premises_RG"].location
+  resource_group_name = azurerm_resource_group.On_Premises.name
+  location = azurerm_resource_group.On_Premises.location
 
   ip_configuration {
     name                          = "internal"
@@ -141,8 +140,8 @@ data "azurerm_key_vault_secret" "vm_admin_password" {
 # Create the Virtual Machines(VM) and assign the NIC to specific VM
 resource "azurerm_windows_virtual_machine" "VMs" {
   name = "OnPrem-VM"
-  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
-  location = azurerm_resource_group.On_Premises["On_Premises_RG"].location
+  resource_group_name = azurerm_resource_group.On_Premises.name
+  location = azurerm_resource_group.On_Premises.location
   size                  = "Standard_DS1_v2"
   admin_username        = data.azurerm_key_vault_secret.vm_admin_username.value
   admin_password        = data.azurerm_key_vault_secret.vm_admin_password.value
@@ -165,15 +164,15 @@ resource "azurerm_windows_virtual_machine" "VMs" {
 # Creates the route table
 resource "azurerm_route_table" "route_table" {
   name                = "Onprem-Spoke"
-  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
-  location = azurerm_resource_group.On_Premises["On_Premises_RG"].location
+  resource_group_name = azurerm_resource_group.On_Premises.name
+  location = azurerm_resource_group.On_Premises.location
   depends_on = [ azurerm_resource_group.On_Premises , azurerm_subnet.subnets ]
 }
 
 # Creates the route in the route table (OnPrem-Firewall-Spoke)
 resource "azurerm_route" "route_01" {
   name                   = "ToSpoke01"
-  resource_group_name = azurerm_resource_group.On_Premises["On_Premises_RG"].name
+  resource_group_name = azurerm_resource_group.On_Premises.name
   route_table_name = azurerm_route_table.route_table.name
   address_prefix = "10.20.0.0/16"     # destnation network address space
   next_hop_type      = "VirtualNetworkGateway" 
@@ -228,55 +227,23 @@ The following resources are used by this module:
 <!-- markdownlint-disable MD013 -->
 ## Required Inputs
 
-No required inputs.
+The following input variables are required:
 
-## Optional Inputs
+### <a name="input_rg_location"></a> [rg\_location](#input\_rg\_location)
 
-The following input variables are optional (have default values):
-
-### <a name="input_admin_password"></a> [admin\_password](#input\_admin\_password)
-
-Description: n/a
+Description: The Location of the Resource Group
 
 Type: `string`
 
-Default: `"pass@word1234"`
+### <a name="input_rg_name"></a> [rg\_name](#input\_rg\_name)
 
-### <a name="input_admin_username"></a> [admin\_username](#input\_admin\_username)
-
-Description: n/a
+Description: The name of the Resource Group
 
 Type: `string`
-
-Default: `"azureuser"`
-
-### <a name="input_rg_details"></a> [rg\_details](#input\_rg\_details)
-
-Description: n/a
-
-Type:
-
-```hcl
-map(object({
-    rg_name = string
-    rg_location = string
-  }))
-```
-
-Default:
-
-```json
-{
-  "On_Premises_RG": {
-    "rg_location": "central india",
-    "rg_name": "On_Premises_RG"
-  }
-}
-```
 
 ### <a name="input_subnet_details"></a> [subnet\_details](#input\_subnet\_details)
 
-Description: n/a
+Description: The details of the Subnets
 
 Type:
 
@@ -287,24 +254,9 @@ map(object({
   }))
 ```
 
-Default:
-
-```json
-{
-  "GatewaySubnet": {
-    "address_prefix": "10.100.1.0/24",
-    "subnet_name": "GatewaySubnet"
-  },
-  "OnPremSubnet": {
-    "address_prefix": "10.100.2.0/24",
-    "subnet_name": "OnPremSubnet"
-  }
-}
-```
-
 ### <a name="input_vnet_details"></a> [vnet\_details](#input\_vnet\_details)
 
-Description: n/a
+Description: The details of the VNET
 
 Type:
 
@@ -315,16 +267,9 @@ map(object({
   }))
 ```
 
-Default:
+## Optional Inputs
 
-```json
-{
-  "On_Premises_vnet": {
-    "address_space": "10.100.0.0/16",
-    "vnet_name": "On_Premises_vnet"
-  }
-}
-```
+No optional inputs.
 
 ## Outputs
 
