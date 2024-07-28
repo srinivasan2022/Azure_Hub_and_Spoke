@@ -1,5 +1,6 @@
 # Hub-spoke network topology in Azure :
-<button>Azure Virtual Network</button> <button>Azure Bastion</button> <button>Azure Firewall</button> <button>Azure Network Watcher</button>  <button>Azure VPN Gateway</button>
+
+[![Documentation](https://img.shields.io/badge/Azure_Virtual_Network-blue?style=for-the-badge)](https://docs.example.com) [![Documentation](https://img.shields.io/badge/Azure_Firewall-blue?style=for-the-badge)](https://docs.example.com) [![Documentation](https://img.shields.io/badge/Azure_Bastion-blue?style=for-the-badge)](https://docs.example.com) [![Documentation](https://img.shields.io/badge/Azure_VPN_Gateway-blue?style=for-the-badge)](https://docs.example.com) [![Documentation](https://img.shields.io/badge/Azure_Network_Watcher-blue?style=for-the-badge)](https://docs.example.com)
 
 #### Description :
 This project will implement an Azure [Hub and Spoke](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/hub-spoke-network-topology) architecture to support a student details application, focusing on security and efficiency. This architecture will feature a centralized hub for shared resources and multiple spoke networks for isolated environments, ensuring high availability and resiliency. Key elements include guard rails to enforce governance, robust security measures including encryption and firewalls, and comprehensive monitoring and logging capabilities. The solution will also incorporate backup and recovery strategies to protect data integrity and ensure business continuity. 
@@ -71,14 +72,10 @@ The AzureFirewallSubnet is a specialized subnet in Azure Virtual Network for hos
 <h6>Cloud Engineer Intern @ CloudSlize</h6>
 </div>
 
-[![Documentation](
-https://img.shields.io/badge/Documentation-blue?style=for-the-badge
-)](
-https://docs.example.com
-)
-[![Your Button Text](
-https://img.shields.io/badge/Your_Text-Your_Color?style=for-the-badge
-)](
-https://your-link-here.com
-)
+<div align="center">
+
+
+[![Your Button Text](https://img.shields.io/badge/Thank_you!-Your_Color?style=for-the-badge)](https://your-link-here.com)
+
+</div>
 
