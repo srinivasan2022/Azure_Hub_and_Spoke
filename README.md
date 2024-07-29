@@ -21,7 +21,7 @@ This project will implement an Azure [Hub and Spoke](https://learn.microsoft.com
 - 11.All logs should go to Log Analytic workspace.
 
 ## Architecture Diagram :
-![Overall](https://github.com/user-attachments/assets/861ccefc-fcc0-4a34-8d27-4885600673e4)
+<img src="Images/Overall.png" align="center">
 
 
 ### Workflow :
@@ -80,5 +80,6 @@ The AzureFirewallSubnet is a specialized subnet in Azure Virtual Network for hos
 [![Your Button Text](https://img.shields.io/badge/Thank_you!-Your_Color?style=for-the-badge)](#)
 
 </div>
+
 
 

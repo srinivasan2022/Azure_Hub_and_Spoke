@@ -11,6 +11,7 @@
 ## Architecture Diagram :
 ![SPOKE\_02](https://github.com/user-attachments/assets/8f4dbe12-420c-4fa0-bf92-367976fdf9e4)
 
+
 ```hcl
 # Create the Resource Group
 resource "azurerm_resource_group" "Spoke_02" {
