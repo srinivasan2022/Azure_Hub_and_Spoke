@@ -5,7 +5,16 @@
 #### Description :
 This project will implement an Azure [Hub and Spoke](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/hub-spoke-network-topology) architecture to support a student details application, focusing on security and efficiency. This architecture will feature a centralized hub for shared resources and multiple spoke networks for isolated environments, ensuring high availability and resiliency. Key elements include guard rails to enforce governance, robust security measures including encryption and firewalls, and comprehensive monitoring and logging capabilities. The solution will also incorporate backup and recovery strategies to protect data integrity and ensure business continuity. 
 
-
+##### Step 1 :
+```
+terraform init
+```
+```
+terraform plan
+```
+```
+terraform apply
+```
 
 #### Steps :
 - 1.We need to create the On_Premises , Hub , Spoke_01 , Spoke_02 , Spoke_03 networks.
@@ -81,5 +90,24 @@ The AzureFirewallSubnet is a specialized subnet in Azure Virtual Network for hos
 
 </div>
 
+<details>
+<summary>dedicated subnets</summary>
+<h6>Azure Virtual Machines</h6>
+<h6>Azure Application Gateway</h6>
+<h6>Azure Kubernetes Service</h6>
+<h6>Azure VPN Gateway</h6>
+<h6>Azure Firewall</h6>
+<h6>Azure Bastion</h6>
+<h6>Azure SQL Database Managed Instance</h6>
+<h6>Azure Container Instances</h6>
+</details>
+
+
+<details><summary><b>powershell</b></summary><br>
+
+```console
+tenv completion powershell | Out-String | Invoke-Expression
+```
+</details>
 
 
