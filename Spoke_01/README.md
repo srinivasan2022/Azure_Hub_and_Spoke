@@ -13,6 +13,18 @@
 ## Architecture Diagram :
 ![SPOKE\_01](https://github.com/user-attachments/assets/d7a7fa0b-6fda-4bc4-b399-f1c2347abeb4)
 
+###### Apply the Terraform configurations :
+Deploy the resources using Terraform,
+```
+terraform init
+```
+```
+terraform plan "--var-file=variables.tfvars"
+```
+```
+terraform apply "--var-file=variables.tfvars"
+```
+
 ```hcl
 data "azurerm_client_config" "current" {}
 data "azuread_client_config" "current" {}

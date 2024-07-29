@@ -7,3 +7,15 @@
 
 ## Architecture Diagram :
 ![On_Premises](https://github.com/user-attachments/assets/0baf48b4-dbc2-437d-9ded-f530f33f23d9)
+
+###### Apply the Terraform configurations :
+Deploy the resources using Terraform,
+```
+terraform init
+```
+```
+terraform plan "--var-file=variables.tfvars"
+```
+```
+terraform apply "--var-file=variables.tfvars"
+```

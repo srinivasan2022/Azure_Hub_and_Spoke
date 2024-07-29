@@ -8,3 +8,15 @@
 
 ## Architecture Diagram :
 ![HUB](https://github.com/user-attachments/assets/975b790f-e4fe-4106-8173-cb6650e01b66)
+
+###### Apply the Terraform configurations :
+Deploy the resources using Terraform,
+```
+terraform init
+```
+```
+terraform plan "--var-file=variables.tfvars"
+```
+```
+terraform apply "--var-file=variables.tfvars"
+```

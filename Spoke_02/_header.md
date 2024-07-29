@@ -9,3 +9,15 @@
 
 ## Architecture Diagram :
 ![SPOKE_02](https://github.com/user-attachments/assets/8f4dbe12-420c-4fa0-bf92-367976fdf9e4)
+
+###### Apply the Terraform configurations :
+Deploy the resources using Terraform,
+```
+terraform init
+```
+```
+terraform plan "--var-file=variables.tfvars"
+```
+```
+terraform apply "--var-file=variables.tfvars"
+```
