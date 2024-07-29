@@ -1,6 +1,6 @@
 # Hub-spoke network topology in Azure :
 
-[![Documentation](https://img.shields.io/badge/Azure-blue?style=for-the-badge)](https://docs.example.com) [![Documentation](https://img.shields.io/badge/Azure_Virtual_Network-blue?style=for-the-badge)](https://docs.example.com) [![Documentation](https://img.shields.io/badge/Azure_Firewall-blue?style=for-the-badge)](https://docs.example.com) [![Documentation](https://img.shields.io/badge/Azure_Bastion-blue?style=for-the-badge)](https://docs.example.com) [![Documentation](https://img.shields.io/badge/Azure_VPN_Gateway-blue?style=for-the-badge)](https://docs.example.com) 
+[![Documentation](https://img.shields.io/badge/Azure-blue?style=for-the-badge)](https://azure.microsoft.com/en-us/resources/cloud-computing-dictionary/what-is-azure) [![Documentation](https://img.shields.io/badge/Azure_Virtual_Network-blue?style=for-the-badge)](https://learn.microsoft.com/en-us/azure/virtual-network/virtual-networks-overview) [![Documentation](https://img.shields.io/badge/Azure_Firewall-blue?style=for-the-badge)](https://learn.microsoft.com/en-us/azure/firewall/overview) [![Documentation](https://img.shields.io/badge/Azure_Bastion-blue?style=for-the-badge)](https://learn.microsoft.com/en-us/azure/bastion/bastion-overview) [![Documentation](https://img.shields.io/badge/Azure_VPN_Gateway-blue?style=for-the-badge)](https://learn.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-about-vpngateways) 
 
 #### Description :
 This project will implement an Azure [Hub and Spoke](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/hub-spoke-network-topology) architecture to support a student details application, focusing on security and efficiency. This architecture will feature a centralized hub for shared resources and multiple spoke networks for isolated environments, ensuring high availability and resiliency. Key elements include guard rails to enforce governance, robust security measures including encryption and firewalls, and comprehensive monitoring and logging capabilities. The solution will also incorporate backup and recovery strategies to protect data integrity and ensure business continuity. 
@@ -45,7 +45,8 @@ This hub-spoke network configuration uses the following architectural elements:
 **[Azure Monitor:](https://learn.microsoft.com/en-us/azure/azure-monitor/overview)** Azure Monitor can collect, analyze, and act on telemetry data from cross-premises environments, including Azure and on-premises. Azure Monitor helps you maximize the performance and availability of your applications and proactively identify problems in seconds.
 
 <h4 style= "color : skyblue">Azure Networking:</h4>
-<img src="https://github.com/user-attachments/assets/aabc2e17-c243-40a7-8dfd-3634ac97c99d" align="right">
+<img src="Images/IP.png" align="right">
+
 
 [Azure reserves the first four addresses and the last address, for a total of five IP addresses within each subnet.](https://learn.microsoft.com/en-us/azure/virtual-network/virtual-networks-faq#are-there-any-restrictions-on-using-ip-addresses-within-these-subnets)
 
@@ -78,4 +79,5 @@ The AzureFirewallSubnet is a specialized subnet in Azure Virtual Network for hos
 [![Your Button Text](https://img.shields.io/badge/Thank_you!-Your_Color?style=for-the-badge)](https://your-link-here.com)
 
 </div>
+
 
