@@ -98,12 +98,3 @@ A dedicated subnet in Azure is a specific range of IP addresses allocated within
 
 
 
-<details><summary><b>powershell</b></summary><br>
-
-```console
-tenv completion powershell | Out-String | Invoke-Expression
-```
-</details>
-
-
-
