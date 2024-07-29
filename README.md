@@ -61,6 +61,21 @@ For example, the IP address range of 10.10.1.0/24 has the following reserved add
 The virtual network gateway requires a specific subnet named <mark>GatewaySubnet</mark>. The gateway subnet is part of the IP address range for your virtual network and contains the IP addresses that the virtual network gateway resources and services use. It's best to specify /27 or larger (/26, /25, etc.) for your gateway subnet.
 #### AzureFirewallSubnet:
 The AzureFirewallSubnet is a specialized subnet in Azure Virtual Network for hosting the Azure Firewall, a cloud-based network security service.Requires at least a /26 subnet (64 IP addresses).<mark>This subnet doesn't support network security groups (NSGs)</mark>.
+#### Dedicated Subnets:
+A dedicated subnet in Azure is a specific range of IP addresses allocated within a Virtual Network (VNet) for particular resources or services. These subnets provide isolation and specific network configurations, such as for Azure Virtual Machines, VPN Gateways, Application Gateways, and other Azure services. They are crucial for managing security and network policies effectively.
+
+<details>
+<summary>The dedicated subnets are ,</summary>
+<h6>Azure Virtual Machines</h6>
+<h6>Azure Application Gateway</h6>
+<h6>Azure Kubernetes Service</h6>
+<h6>Azure VPN Gateway</h6>
+<h6>Azure Firewall</h6>
+<h6>Azure Bastion</h6>
+<h6>Azure SQL Database Managed Instance</h6>
+<h6>Azure Container Instances</h6>
+</details>
+
 
 
 ### Feedback
@@ -80,17 +95,7 @@ The AzureFirewallSubnet is a specialized subnet in Azure Virtual Network for hos
 
 </div>
 
-<details>
-<summary>dedicated subnets</summary>
-<h6>Azure Virtual Machines</h6>
-<h6>Azure Application Gateway</h6>
-<h6>Azure Kubernetes Service</h6>
-<h6>Azure VPN Gateway</h6>
-<h6>Azure Firewall</h6>
-<h6>Azure Bastion</h6>
-<h6>Azure SQL Database Managed Instance</h6>
-<h6>Azure Container Instances</h6>
-</details>
+
 
 
 <details><summary><b>powershell</b></summary><br>
@@ -99,5 +104,6 @@ The AzureFirewallSubnet is a specialized subnet in Azure Virtual Network for hos
 tenv completion powershell | Out-String | Invoke-Expression
 ```
 </details>
+
 
 
