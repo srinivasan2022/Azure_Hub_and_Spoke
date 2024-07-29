@@ -65,8 +65,9 @@ The AzureFirewallSubnet is a specialized subnet in Azure Virtual Network for hos
 
 
 ### Feedback
-**Was this document helpful?** 
-<button>Yes</button> <button>No</button>
+**Was this document helpful?** </br>
+[![Documentation](https://img.shields.io/badge/Yes-blue?style=for-the-badge)](#) [![Documentation](https://img.shields.io/badge/No-blue?style=for-the-badge)](#)
+
 
 <div align="right"><h4>Written By,</h4>
 <a href="https://www.linkedin.com/in/seenu2002/">V.Srinivasan</a>
@@ -76,7 +77,7 @@ The AzureFirewallSubnet is a specialized subnet in Azure Virtual Network for hos
 <div align="center">
 
 
-[![Your Button Text](https://img.shields.io/badge/Thank_you!-Your_Color?style=for-the-badge)](https://your-link-here.com)
+[![Your Button Text](https://img.shields.io/badge/Thank_you!-Your_Color?style=for-the-badge)](#)
 
 </div>
 
