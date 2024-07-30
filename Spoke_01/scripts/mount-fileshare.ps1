@@ -1,11 +1,11 @@
 
-# $storageAccountName = "${azurerm_storage_account.storage-account.name}"
-# $shareName = "${azurerm_storage_share.fileshare.name}"
-# $storageAccountKey = "${azurerm_storage_account.storage-account.primary_access_key}"
+$storageAccountName = "${azurerm_storage_account.storage-account.name}"
+$shareName = "${azurerm_storage_share.fileshare.name}"
+$storageAccountKey = "${azurerm_storage_account.storage-account.primary_access_key}"
 
-$storageAccountName =  "" #"${storage_account_name}"
-$shareName = "${share_name}"
-$storageAccountKey = "${storage_account_key}"
+# $storageAccountName =  "${storage_account_name}"
+# $shareName = "${share_name}"
+# $storageAccountKey = "${storage_account_key}"
 
 # Add commands to mount the file share
 

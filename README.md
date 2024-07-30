@@ -95,6 +95,4 @@ A dedicated subnet in Azure is a specific range of IP addresses allocated within
 
 </div>
 
-
-
-
+---

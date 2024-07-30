@@ -2,7 +2,7 @@ variable "rg_name" {
   type = string
   description = "The name of the Resource Group"
   validation {
-    condition = length(var.rg_name>0)
+    condition = length(var.rg_name)>0
     error_message = "The name must be provided"
   }
 
@@ -12,7 +12,7 @@ variable "rg_location" {
   type = string
   description = "The Location of the Resource Group"
   validation {
-    condition = length(var.rg_location>0)
+    condition = length(var.rg_location)>0
     error_message = "The Location must be provided"
   }
 }
