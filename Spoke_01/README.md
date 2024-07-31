@@ -19,10 +19,10 @@ Deploy the resources using Terraform,
 terraform init
 ```
 ```
-terraform plan "--var-file=variables.tfvars"
+terraform plan
 ```
 ```
-terraform apply "--var-file=variables.tfvars"
+terraform apply
 ```
 
 ```hcl
@@ -529,10 +529,6 @@ Description: n/a
 Description: n/a
 
 ### <a name="output_Spoke_01_vnet"></a> [Spoke\_01\_vnet](#output\_Spoke\_01\_vnet)
-
-Description: n/a
-
-### <a name="output_VMs"></a> [VMs](#output\_VMs)
 
 Description: n/a
 

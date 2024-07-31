@@ -21,6 +21,5 @@ resource "azurerm_storage_container" "project_state" {
   container_access_type = "private"
 }
 
-# terraform plan "--var-file=variables.tfvars"
 
  
