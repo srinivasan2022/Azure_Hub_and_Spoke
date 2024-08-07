@@ -124,7 +124,7 @@ resource "azurerm_application_gateway" "appGW" {
 # Fetch the data from key vault
 data "azurerm_key_vault" "Key_vault" {
   name                = "MyKeyVault1603"
-  resource_group_name = "Spoke_01_RG"
+  resource_group_name = "On_Premises_RG"
 }
 
 # Get the username from key vault secret store

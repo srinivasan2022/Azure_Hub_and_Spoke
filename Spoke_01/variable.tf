@@ -38,23 +38,6 @@ variable "rules_file" {
   description = "The name of CSV file containing NSG rules"
   default = "rules.csv"
 }
-
-variable "admin_username" {
-  type        = string
-  description = "The Username of the User"
-}
-
-variable "admin_password" {
-  type        = string
-  description = "The Password of the User"
-  sensitive   = true
-}
-
-variable "Key_vault_name" {
-  type = string
-  description = "The name of the Key Vault"
-}
-
 variable "storage_account_name" {
   type = string
   description = "The name of storage account name"

@@ -19,3 +19,7 @@ subnet_details = {
         address_prefix = "10.100.2.0/24"
     }
 }
+
+Key_vault_name = "MyKeyVault1603"
+admin_username = "azureuser"
+admin_password = "pass@word1234"

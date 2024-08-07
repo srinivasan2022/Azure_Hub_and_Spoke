@@ -30,3 +30,19 @@ variable "subnet_details" {
   }))
   description = "The details of the Subnets"
 }
+
+variable "admin_username" {
+  type        = string
+  description = "The Username of the User"
+}
+
+variable "admin_password" {
+  type        = string
+  description = "The Password of the User"
+  sensitive   = true
+}
+
+variable "Key_vault_name" {
+  type = string
+  description = "The name of the Key Vault"
+}

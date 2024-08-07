@@ -20,10 +20,6 @@ subnet_details = {
     }
 }
 
-Key_vault_name = "MyKeyVault1603"
-admin_username = "azureuser"
-admin_password = "pass@word1234"
-
 storage_account_name = "storageaccount160302"
 file_share_name = "fileshare01"
 data_disk_name = "vm-datadisk"

@@ -34,6 +34,20 @@ resource "azurerm_public_ip" "public_ips" {
   sku                 = "Standard"
   depends_on = [ azurerm_resource_group.Hub ]
 }
+
+# Creates the Azure Bastion
+resource "azurerm_bastion_host" "example" {
+  name                = "Bastion"
+  location            = azurerm_resource_group.Hub.location
+  resource_group_name = azurerm_resource_group.Hub.name
+  sku = "Standard"
+  ip_configuration {
+    name = "ipconfig"
+    public_ip_address_id = azurerm_public_ip.publi_ips["AzureBastionSubnet"].id
+    subnet_id = azurerm_subnet.subnets["AzureBastionSubnet"].id 
+  }
+  depends_on = [ azurerm_subnet.subnets , azurerm_public_ip.public_ipsn]
+}
  
 # Create the Azure Firewall policy
 resource "azurerm_firewall_policy" "firewall_policy" {
