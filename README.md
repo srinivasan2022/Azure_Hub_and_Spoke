@@ -33,6 +33,10 @@ This hub-spoke network configuration uses the following architectural elements:
 
 **Virtual network connectivity:** This architecture connects virtual networks by using [virtual network peering](https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-peering-overview) connections or connected groups. Peering connections and connected groups are non-transitive, low-latency connections between virtual networks. Peered or connected virtual networks can exchange traffic over the Azure backbone without needing a router. Azure Virtual Network Manager creates and manages network groups and their connections.
 
+**Azure Bastion host:** Azure Bastion provides secure connectivity from the Azure portal to virtual machines (VMs) by using your browser. An Azure Bastion host deployed inside an Azure virtual network can access VMs in that virtual network or in connected virtual networks.
+
+**Azure VPN Gateway or Azure ExpressRoute gateway:** A virtual network gateway enables a virtual network to connect to a virtual private network (VPN) device or Azure ExpressRoute circuit. The gateway provides cross-premises network connectivity. For more information, see [Connect an on-premises network to a Microsoft Azure virtual network](https://learn.microsoft.com/en-us/microsoft-365/enterprise/connect-an-on-premises-network-to-a-microsoft-azure-virtual-network?view=o365-worldwide) and Extend an on-premises network using VPN.
+
 **Azure Firewall:** An Azure Firewall managed firewall instance exists in its own subnet.
 
 ### Components:
@@ -76,6 +80,47 @@ A dedicated subnet in Azure is a specific range of IP addresses allocated within
 <h6>Azure SQL Database Managed Instance</h6>
 <h6>Azure Container Instances</h6>
 </details>
+
+#### Spoke network connectivity:
+Virtual network peering or connected groups are non-transitive relationships between virtual networks. If you need spoke virtual networks to connect to each other, add a peering connection between those spokes or place them in the same network group.
+
+#### Spoke connections through Azure Firewall or NVA:
+The number of virtual network peerings per virtual network is limited. If you have many spokes that need to connect with each other, you could run out of peering connections. Connected groups also have limitations.
+
+In this scenario, consider using user-defined routes (UDRs) to force spoke traffic to be sent to Azure Firewall or another NVA that acts as a router at the hub. This change allows the spokes to connect to each other. To support this configuration, you must implement Azure Firewall with forced tunnel configuration enabled. For more information, see Azure Firewall forced tunneling.
+
+The topology in this architectural design facilitates egress flows. While Azure Firewall is primarily for egress security, it can also be an ingress point. For more considerations about hub NVA ingress routing, see Firewall and Application Gateway for virtual networks.
+
+#### Spoke connections to remote networks through a hub gateway:
+To configure spokes to communicate with remote networks through a hub gateway, you can use virtual network peerings or connected network groups.
+
+To use virtual network peerings, in the virtual network Peering setup:
+
+- Configure the peering connection in the <mark>hub to Allow gateway transit.</mark>
+- Configure the peering connection in <mark>each spoke to Use the remote virtual network's gateway.</mark>
+- Configure <mark>all peering connections to Allow forwarded traffic.</mark>
+
+For more information, see [Create a virtual network peering](https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-manage-peering?tabs=peering-portal#create-a-peering).
+
+To use connected network groups:
+
+- In Virtual Network Manager, create a network group and add member virtual networks.
+- Create a hub and spoke connectivity configuration.
+- For the Spoke network groups, select Hub as gateway.
+
+#### Spoke network communications:
+There are two main ways to allow spoke virtual networks to communicate with each other:
+
+- 1.Communication via an NVA like a firewall and router. This method incurs a hop between the three spokes.
+- 2.Communication by using virtual network peering or Virtual Network Manager direct connectivity between spokes. This approach doesn't cause a hop between the two spokes and is recommended for minimizing latency.
+
+
+#### Communication through an NVA:
+If you need connectivity between spokes, consider deploying Azure Firewall or another NVA in the hub. Then create routes to forward traffic from a spoke to the firewall or NVA, which can then route to the second spoke. In this scenario, you must <mark>configure the peering connections to allow forwarded traffic</mark>.
+
+You can also use a VPN gateway to route traffic between spokes, although this choice affects latency and throughput. For configuration details, see [Configure VPN gateway transit for virtual network peering](https://learn.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-peering-gateway-transit).
+
+Evaluate the services you share in the hub to ensure that the hub scales for a larger number of spokes. For instance, if your hub provides firewall services, consider your firewall solution's bandwidth limits when you add multiple spokes. You can move some of these shared services to a second level of hubs.
 
 
 
