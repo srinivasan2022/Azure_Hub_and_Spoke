@@ -40,7 +40,7 @@ This hub-spoke network configuration uses the following architectural elements:
 **Azure Firewall:** An Azure Firewall managed firewall instance exists in its own subnet.
 
 ### Components:
-<img src="https://www.checkpoint.com/wp-content/uploads/microsoft-azure-virtual-networks-vnet.png" width="70px" align="right">
+<img src="https://www.checkpoint.com/wp-content/uploads/microsoft-azure-virtual-networks-vnet.png" width="60px" align="right">
 
 **[Virtual Network:](https://learn.microsoft.com/en-us/azure/virtual-network/virtual-networks-overview)** Azure Virtual Network is the fundamental building block for private networks in Azure. Virtual Network enables many Azure resources, such as Azure VMs, to securely communicate with each other, cross-premises networks, and the internet.
 
@@ -56,19 +56,19 @@ This hub-spoke network configuration uses the following architectural elements:
 
 **[Azure Bastion:](https://learn.microsoft.com/en-us/azure/bastion/bastion-overview)** Azure Bastion is a fully managed PaaS service that you provision to securely connect to virtual machines via private IP address. It provides secure and seamless RDP/SSH connectivity to your virtual machines directly over TLS from the Azure portal, or via the native SSH or RDP client already installed on your local computer. When you connect via Azure Bastion, your virtual machines don't need a public IP address, agent, or special client software.
 
-<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQhggq3ThuvGbOvBmSVBjZIvNoq-oK-P7rRlQ&s" width="80px" align="right">
+<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQhggq3ThuvGbOvBmSVBjZIvNoq-oK-P7rRlQ&s" width="50px" align="right">
 
 **[Application Gateway:](https://learn.microsoft.com/en-us/azure/application-gateway/overview)** Azure Application Gateway is a web traffic (OSI layer 7) load balancer that enables you to manage traffic to your web applications. It can make routing decisions based on additional attributes of an HTTP request, for example URI path or host headers. For example, you can route traffic based on the incoming URL. So if /images is in the incoming URL, you can route traffic to a specific set of servers (known as a pool) configured for images. If /video is in the URL, that traffic is routed to another pool that's optimized for videos.
 
-<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRnLhoOuv9e7NLuruhd4L9hiGRkVF0KGxlIJA&s" width="70px" align="right">
+<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRnLhoOuv9e7NLuruhd4L9hiGRkVF0KGxlIJA&s" width="50px" align="right">
 
 **[App Service:](https://learn.microsoft.com/en-us/azure/app-service/overview)** Azure App Service is an HTTP-based service for hosting web applications, REST APIs, and mobile back ends. You can develop in your favorite language, be it .NET, .NET Core, Java, Node.js, PHP, and Python. Applications run and scale with ease on both Windows and Linux-based environments.
 
-<img src="https://www.techielass.com/content/images/2021/03/azuredns-1.png" width="70px" align="right">
+<img src="https://www.techielass.com/content/images/2021/03/azuredns-1.png" width="50px" align="right">
 
 **[Azure Private DNS zone:](https://learn.microsoft.com/en-us/azure/dns/private-dns-privatednszone)** Azure Private DNS provides a reliable, secure DNS service to manage and resolve domain names in a virtual network without the need to add a custom DNS solution. By using private DNS zones, you can use your own custom domain names rather than the Azure-provided names available today.
 
-<img src="https://user-images.githubusercontent.com/37974296/113137352-59e74380-921c-11eb-97e4-bcaf90528ae7.png" width="70px" align="right">
+<img src="https://user-images.githubusercontent.com/37974296/113137352-59e74380-921c-11eb-97e4-bcaf90528ae7.png" width="60px" align="right">
 
 **[Private Endpoint:](https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-overview)** A private endpoint is a network interface that uses a private IP address from your virtual network. This network interface connects you privately and securely to a service that's powered by Azure Private Link. By enabling a private endpoint, you're bringing the service into your virtual network.
 
@@ -79,7 +79,7 @@ The service could be an Azure service such as:
 - Azure SQL Database
 - Your own service, using Private Link service.
 
-<img src="https://azure.microsoft.com/svghandler/monitor/?width=600&height=315" width="80px" align="right">
+<img src="https://azure.microsoft.com/svghandler/monitor/?width=600&height=315" width="100px" align="right">
 
 **[Azure Monitor:](https://learn.microsoft.com/en-us/azure/azure-monitor/overview)** Azure Monitor can collect, analyze, and act on telemetry data from cross-premises environments, including Azure and on-premises. Azure Monitor helps you maximize the performance and availability of your applications and proactively identify problems in seconds.
 
