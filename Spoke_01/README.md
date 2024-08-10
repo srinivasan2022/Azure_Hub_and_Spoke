@@ -26,9 +26,6 @@ terraform apply
 ```
 
 ```hcl
-data "azurerm_client_config" "current" {}
-data "azuread_client_config" "current" {}
-
 # Create the Resource Group
 resource "azurerm_resource_group" "Spoke_01" {
    name     = var.rg_name
@@ -103,47 +100,22 @@ resource "azurerm_network_interface" "subnet_nic" {
   depends_on = [ azurerm_virtual_network.Spoke_01_vnet , azurerm_subnet.subnets ]
 }
 
-# Creates the Azure Key vault to store the VM username and password
-resource "azurerm_key_vault" "Key_vault" {
-  name                        = var.Key_vault_name
-  resource_group_name = azurerm_resource_group.Spoke_01.name
-  location = azurerm_resource_group.Spoke_01.location
-  sku_name                    = "standard"
-  tenant_id                   = data.azurerm_client_config.current.tenant_id
-  purge_protection_enabled    = true
-  soft_delete_retention_days = 30
-  access_policy {
-    tenant_id = data.azurerm_client_config.current.tenant_id
-    object_id = data.azuread_client_config.current.object_id
-
-    secret_permissions = [
-      "Get",
-      "Set",
-      "Backup",
-      "Delete",
-      "Purge", 
-      "List",
-      "Recover",
-      "Restore",
-    ]
-  }
-  depends_on = [ azurerm_resource_group.Spoke_01 ]
+# Fetch the data from key vault
+data "azurerm_key_vault" "Key_vault" {
+  name                = "MyKeyVault160320"
+  resource_group_name = "On_Premises_RG"
 }
 
-# Creates the Azure Key vault secret to store the VM username and password
-resource "azurerm_key_vault_secret" "vm_admin_username" {
+# Get the username from key vault secret store
+data "azurerm_key_vault_secret" "vm_admin_username" {
   name         = "Spokevmvirtualmachineusername"
-  value        = var.admin_username
-  key_vault_id = azurerm_key_vault.Key_vault.id
-  depends_on = [ azurerm_key_vault.Key_vault ]
+  key_vault_id = data.azurerm_key_vault.Key_vault.id
 }
 
-# Creates the Azure Key vault secret to store the VM username and password
-resource "azurerm_key_vault_secret" "vm_admin_password" {
+# Get the password from key vault secret store
+data "azurerm_key_vault_secret" "vm_admin_password" {
   name         = "Spokevmvirtualmachinepassword"
-  value        = var.admin_password
-  key_vault_id = azurerm_key_vault.Key_vault.id
-  depends_on = [ azurerm_key_vault.Key_vault ]
+  key_vault_id = data.azurerm_key_vault.Key_vault.id
 }
 
 # Create the Virtual Machines(VM) and assign the NIC to specific VMs
@@ -152,8 +124,8 @@ resource "azurerm_windows_virtual_machine" "VMs" {
   resource_group_name = azurerm_resource_group.Spoke_01.name
   location = azurerm_resource_group.Spoke_01.location
   size                  = "Standard_DS1_v2"
-   admin_username        =  azurerm_key_vault_secret.vm_admin_username.value  
-   admin_password        =  azurerm_key_vault_secret.vm_admin_password.value  
+   admin_username        =  data.azurerm_key_vault_secret.vm_admin_username.value  
+   admin_password        =  data.azurerm_key_vault_secret.vm_admin_password.value  
    for_each = {for idx , nic in azurerm_network_interface.subnet_nic : idx => nic.id}
   # for_each = local.NIC_Names
   network_interface_ids = [each.value]
@@ -171,7 +143,7 @@ resource "azurerm_windows_virtual_machine" "VMs" {
     sku       = "2019-Datacenter"
     version   = "latest"
   }
-#   depends_on = [ azurerm_network_interface.subnet_nic ,  azurerm_storage_share.fileshare ]
+   depends_on = [ azurerm_network_interface.subnet_nic ,  data.azurerm_key_vault_secret.vm_admin_username , data.azurerm_key_vault_secret.vm_admin_password ]
  }
 
 # Create the Storage account for FileShare
@@ -191,6 +163,49 @@ resource "azurerm_storage_share" "fileshare" {
   quota                = 5
   depends_on = [ azurerm_resource_group.Spoke_01 , azurerm_storage_account.storage-account ]
 }
+
+#Creates the private endpoint
+resource "azurerm_private_endpoint" "storage_endpoint" {
+  name = var.private_endpoint_name
+  resource_group_name = azurerm_storage_account.storage-account.resource_group_name
+  location = azurerm_storage_account.storage-account.location
+  subnet_id = azurerm_subnet.subnets["Web-01"].id
+  private_service_connection {
+    name = "storage_privatelink"
+    private_connection_resource_id = azurerm_storage_account.storage-account.id
+    subresource_names = [ "file" ]
+    is_manual_connection = false
+  }
+  depends_on = [ azurerm_subnet.subnets , azurerm_storage_account.storage-account , azurerm_storage_share.fileshare ]
+}
+
+# Creates the private DNS zone
+resource "azurerm_private_dns_zone" "pr_dns_zone" {
+  name = var.private_dns_zone_name
+  resource_group_name = azurerm_resource_group.Spoke_01.name
+  depends_on = [ azurerm_resource_group.Spoke_01 ]
+}
+
+# Creates the virtual network link in private DNS zone
+resource "azurerm_private_dns_zone_virtual_network_link" "vnet_link" {
+  name = var.private_dns_zone_vnet_link
+  resource_group_name = azurerm_private_dns_zone.pr_dns_zone.resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.pr_dns_zone.name
+  virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id     # Creates the link to Hub vnet
+  #virtual_network_id = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].id
+  depends_on = [ azurerm_private_dns_zone.pr_dns_zone , data.azurerm_virtual_network.Hub_vnet ]
+}
+
+# Creates the records in private DNS zone
+resource "azurerm_private_dns_a_record" "dns_record" {
+  name = var.private_dns_a_record
+  zone_name = azurerm_private_dns_zone.pr_dns_zone.name
+  resource_group_name = azurerm_private_dns_zone.pr_dns_zone.resource_group_name
+  ttl = 300
+  records = [ azurerm_private_endpoint.storage_endpoint.private_service_connection[0].private_ip_address ]
+  depends_on = [ azurerm_private_dns_zone.pr_dns_zone , azurerm_private_endpoint.storage_endpoint  ]
+}
+
 
 # Mount the fileshare to Vitrual Machine
 resource "azurerm_virtual_machine_extension" "your-extension" {
@@ -396,20 +411,19 @@ The following requirements are needed by this module:
 
 The following providers are used by this module:
 
-- <a name="provider_azuread"></a> [azuread](#provider\_azuread)
-
 - <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) (~> 3.0.2)
 
 ## Resources
 
 The following resources are used by this module:
 
-- [azurerm_key_vault.Key_vault](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/key_vault) (resource)
-- [azurerm_key_vault_secret.vm_admin_password](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/key_vault_secret) (resource)
-- [azurerm_key_vault_secret.vm_admin_username](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/key_vault_secret) (resource)
 - [azurerm_managed_disk.data_disk](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/managed_disk) (resource)
 - [azurerm_network_interface.subnet_nic](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_interface) (resource)
 - [azurerm_network_security_group.nsg](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_security_group) (resource)
+- [azurerm_private_dns_a_record.dns_record](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_dns_a_record) (resource)
+- [azurerm_private_dns_zone.pr_dns_zone](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_dns_zone) (resource)
+- [azurerm_private_dns_zone_virtual_network_link.vnet_link](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_dns_zone_virtual_network_link) (resource)
+- [azurerm_private_endpoint.storage_endpoint](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_endpoint) (resource)
 - [azurerm_resource_group.Spoke_01](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) (resource)
 - [azurerm_storage_account.storage-account](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_account) (resource)
 - [azurerm_storage_share.fileshare](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_share) (resource)
@@ -421,32 +435,15 @@ The following resources are used by this module:
 - [azurerm_virtual_network_peering.Hub-Spoke_01](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_peering) (resource)
 - [azurerm_virtual_network_peering.Spoke_01-To-Hub](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_peering) (resource)
 - [azurerm_windows_virtual_machine.VMs](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/windows_virtual_machine) (resource)
-- [azuread_client_config.current](https://registry.terraform.io/providers/hashicorp/azuread/latest/docs/data-sources/client_config) (data source)
-- [azurerm_client_config.current](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/client_config) (data source)
+- [azurerm_key_vault.Key_vault](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault) (data source)
+- [azurerm_key_vault_secret.vm_admin_password](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault_secret) (data source)
+- [azurerm_key_vault_secret.vm_admin_username](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault_secret) (data source)
 - [azurerm_virtual_network.Hub_vnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/virtual_network) (data source)
 
 <!-- markdownlint-disable MD013 -->
 ## Required Inputs
 
 The following input variables are required:
-
-### <a name="input_Key_vault_name"></a> [Key\_vault\_name](#input\_Key\_vault\_name)
-
-Description: The name of the Key Vault
-
-Type: `string`
-
-### <a name="input_admin_password"></a> [admin\_password](#input\_admin\_password)
-
-Description: The Password of the User
-
-Type: `string`
-
-### <a name="input_admin_username"></a> [admin\_username](#input\_admin\_username)
-
-Description: The Username of the User
-
-Type: `string`
 
 ### <a name="input_data_disk_name"></a> [data\_disk\_name](#input\_data\_disk\_name)
 
@@ -457,6 +454,30 @@ Type: `string`
 ### <a name="input_file_share_name"></a> [file\_share\_name](#input\_file\_share\_name)
 
 Description: The name of file share name
+
+Type: `string`
+
+### <a name="input_private_dns_a_record"></a> [private\_dns\_a\_record](#input\_private\_dns\_a\_record)
+
+Description: The name of private DNS virtual network link name
+
+Type: `string`
+
+### <a name="input_private_dns_zone_name"></a> [private\_dns\_zone\_name](#input\_private\_dns\_zone\_name)
+
+Description: The name of private DNS zone name
+
+Type: `string`
+
+### <a name="input_private_dns_zone_vnet_link"></a> [private\_dns\_zone\_vnet\_link](#input\_private\_dns\_zone\_vnet\_link)
+
+Description: The name of private DNS virtual network link name
+
+Type: `string`
+
+### <a name="input_private_endpoint_name"></a> [private\_endpoint\_name](#input\_private\_endpoint\_name)
+
+Description: The name of private endpoint name
 
 Type: `string`
 

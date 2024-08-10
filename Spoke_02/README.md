@@ -78,8 +78,10 @@ resource "azurerm_network_security_group" "nsg" {
 # Associate the NSG for their Subnets
 resource "azurerm_subnet_network_security_group_association" "nsg_ass" {
   for_each = { for idx , subnet in azurerm_subnet.subnets : idx => subnet.id}
-  subnet_id                 = each.value
-  network_security_group_id =   azurerm_network_security_group.nsg[local.nsg_names[each.key]].id
+  #subnet_id                 = each.value
+  #network_security_group_id =   azurerm_network_security_group.nsg[local.nsg_names[each.key]].id
+  subnet_id = azurerm_subnet.subnets["VMSS"].id
+  network_security_group_id = azurerm_network_security_group.nsg["VMSS"].id
   depends_on = [ azurerm_network_security_group.nsg ]
 }
 
@@ -101,7 +103,7 @@ resource "azurerm_application_gateway" "appGW" {
     name     = "Standard_v2"
     tier     = "Standard_v2"
     capacity = 2
-  }
+  } 
 
   gateway_ip_configuration {
     name      = "appgw-ip-config"
@@ -149,8 +151,8 @@ resource "azurerm_application_gateway" "appGW" {
 
 # Fetch the data from key vault
 data "azurerm_key_vault" "Key_vault" {
-  name                = "MyKeyVault1603"
-  resource_group_name = "Spoke_01_RG"
+  name                = "MyKeyVault160320"
+  resource_group_name = "On_Premises_RG"
 }
 
 # Get the username from key vault secret store

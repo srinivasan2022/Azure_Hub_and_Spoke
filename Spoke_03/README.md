@@ -45,14 +45,18 @@ resource "azurerm_subnet" "subnets" {
   address_prefixes = [each.value.address_prefix]
   virtual_network_name = azurerm_virtual_network.Spoke_03_vnet["Spoke_03_vnet"].name
   resource_group_name = azurerm_resource_group.Spoke_03.name
-  delegation {
-    name = "appservice_delegation"
-    service_delegation {
-      name = "Microsoft.Web/serverFarms"
-      actions = [
+ dynamic "delegation" {
+    for_each = each.key == "AppServiceSubnet" ? [1] : []
+    content{
+        name = "appservice_delegation"
+        service_delegation {
+        name = "Microsoft.Web/serverFarms"
+        actions = [
         "Microsoft.Network/virtualNetworks/subnets/action"
       ]
     }
+    }
+    
   }
   depends_on = [ azurerm_virtual_network.Spoke_03_vnet ]
 }
@@ -117,6 +121,48 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_03" {
   depends_on = [ azurerm_virtual_network.Spoke_03_vnet , data.azurerm_virtual_network.Hub_vnet ]
 }
 
+#Creates the private endpoint
+resource "azurerm_private_endpoint" "app_endpoint" {
+  name = var.private_endpoint_name
+  resource_group_name = azurerm_app_service.web_app.resource_group_name
+  location = azurerm_app_service.web_app.location
+  subnet_id = azurerm_subnet.subnets["web_subnet"].id
+  private_service_connection {
+    name = "web_app_privatelink"
+    private_connection_resource_id = azurerm_app_service.web_app.id
+    subresource_names = [ "sites" ]
+    is_manual_connection = false
+  }
+  depends_on = [ azurerm_subnet.subnets , azurerm_app_service.web_app ]
+}
+
+# Creates the private DNS zone
+resource "azurerm_private_dns_zone" "pr_dns_zone" {
+  name = var.private_dns_zone_name
+  resource_group_name = azurerm_resource_group.Spoke_03.name
+  depends_on = [ azurerm_resource_group.Spoke_03 ]
+}
+
+# Creates the virtual network link in private DNS zone
+resource "azurerm_private_dns_zone_virtual_network_link" "vnet_link" {
+  name = var.private_dns_zone_vnet_link
+  resource_group_name = azurerm_private_dns_zone.pr_dns_zone.resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.pr_dns_zone.name
+  virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id     # Creates the link to Hub vnet
+  #virtual_network_id = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].id
+  depends_on = [ azurerm_private_dns_zone.pr_dns_zone , data.azurerm_virtual_network.Hub_vnet ]
+}
+
+# Creates the records in private DNS zone
+resource "azurerm_private_dns_a_record" "dns_record" {
+  name = var.private_dns_a_record
+  zone_name = azurerm_private_dns_zone.pr_dns_zone.name
+  resource_group_name = azurerm_private_dns_zone.pr_dns_zone.resource_group_name
+  ttl = 300
+  records = [ azurerm_private_endpoint.app_endpoint.private_service_connection[0].private_ip_address ]
+  depends_on = [ azurerm_private_dns_zone.pr_dns_zone , azurerm_private_endpoint.app_endpoint  ]
+}
+
 
 # # Creates the policy definition
 # resource "azurerm_policy_definition" "rg_policy_def" {
@@ -177,6 +223,10 @@ The following resources are used by this module:
 - [azurerm_app_service.web_app](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service) (resource)
 - [azurerm_app_service_plan.plan](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service_plan) (resource)
 - [azurerm_app_service_virtual_network_swift_connection.vnet_integration](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/app_service_virtual_network_swift_connection) (resource)
+- [azurerm_private_dns_a_record.dns_record](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_dns_a_record) (resource)
+- [azurerm_private_dns_zone.pr_dns_zone](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_dns_zone) (resource)
+- [azurerm_private_dns_zone_virtual_network_link.vnet_link](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_dns_zone_virtual_network_link) (resource)
+- [azurerm_private_endpoint.app_endpoint](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_endpoint) (resource)
 - [azurerm_resource_group.Spoke_03](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) (resource)
 - [azurerm_subnet.subnets](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet) (resource)
 - [azurerm_virtual_network.Spoke_03_vnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network) (resource)
@@ -188,6 +238,30 @@ The following resources are used by this module:
 ## Required Inputs
 
 The following input variables are required:
+
+### <a name="input_private_dns_a_record"></a> [private\_dns\_a\_record](#input\_private\_dns\_a\_record)
+
+Description: The name of private DNS virtual network link name
+
+Type: `string`
+
+### <a name="input_private_dns_zone_name"></a> [private\_dns\_zone\_name](#input\_private\_dns\_zone\_name)
+
+Description: The name of private DNS zone name
+
+Type: `string`
+
+### <a name="input_private_dns_zone_vnet_link"></a> [private\_dns\_zone\_vnet\_link](#input\_private\_dns\_zone\_vnet\_link)
+
+Description: The name of private DNS virtual network link name
+
+Type: `string`
+
+### <a name="input_private_endpoint_name"></a> [private\_endpoint\_name](#input\_private\_endpoint\_name)
+
+Description: The name of private endpoint name
+
+Type: `string`
 
 ### <a name="input_rg_location"></a> [rg\_location](#input\_rg\_location)
 

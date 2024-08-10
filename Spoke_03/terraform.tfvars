@@ -13,8 +13,22 @@ subnet_details = {
       subnet_name = "AppServiceSubnet"
       address_prefix = "10.40.0.0/27"
     }
+
+    "web_subnet" = {
+      subnet_name = "web_subnet"
+      address_prefix = "10.40.1.0/26"
+    }
 }
 
 app_service_plan_name = "appserviceplan"
+
 web_app_name = "my-webapp1603"
+
+private_endpoint_name = "web-app-endpoint"
+
+private_dns_zone_name = "privatelink.azurewebsites.net"
+
+private_dns_zone_vnet_link = "Spoke03-DNS-link"
+
+private_dns_a_record = "webapp2024"
 

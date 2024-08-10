@@ -21,5 +21,15 @@ subnet_details = {
 }
 
 storage_account_name = "storageaccount160302"
+
 file_share_name = "fileshare01"
+
 data_disk_name = "vm-datadisk"
+
+private_endpoint_name = "storage-file-endpoint"
+
+private_dns_zone_name = "privatelink.file.core.windows.net"
+
+private_dns_zone_vnet_link = "Spoke01-DNS-link"
+
+private_dns_a_record = "storagefile2024"

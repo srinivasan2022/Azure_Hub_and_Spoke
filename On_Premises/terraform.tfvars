@@ -20,6 +20,6 @@ subnet_details = {
     }
 }
 
-Key_vault_name = "MyKeyVault1603"
+Key_vault_name = "MyKeyVault160320"
 admin_username = "azureuser"
 admin_password = "pass@word1234"

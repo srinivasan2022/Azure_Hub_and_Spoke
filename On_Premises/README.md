@@ -22,6 +22,9 @@ terraform apply
 ```
 
 ```hcl
+data "azurerm_client_config" "current" {}
+data "azuread_client_config" "current" {}
+
 # Create the Resource Group
 resource "azurerm_resource_group" "On_Premises" {
    name     = var.rg_name
@@ -131,22 +134,47 @@ resource "azurerm_network_interface" "subnet_nic" {
   depends_on = [ azurerm_virtual_network.On_Premises_vnet , azurerm_subnet.subnets ]
 }
 
-# Fetch the data from key vault
-data "azurerm_key_vault" "Key_vault" {
-  name                = "MyKeyVault1603"
-  resource_group_name = "Spoke_01_RG"
+# Creates the Azure Key vault to store the VM username and password
+resource "azurerm_key_vault" "Key_vault" {
+  name                        = var.Key_vault_name
+  resource_group_name = azurerm_resource_group.On_Premises.name
+  location = azurerm_resource_group.On_Premises.location
+  sku_name                    = "standard"
+  tenant_id                   = data.azurerm_client_config.current.tenant_id
+  purge_protection_enabled    = true
+  soft_delete_retention_days = 30
+  access_policy {
+    tenant_id = data.azurerm_client_config.current.tenant_id
+    object_id = data.azuread_client_config.current.object_id
+
+    secret_permissions = [
+      "Get",
+      "Set",
+      "Backup",
+      "Delete",
+      "Purge", 
+      "List",
+      "Recover",
+      "Restore",
+    ]
+  }
+  depends_on = [ azurerm_resource_group.On_Premises ]
 }
 
-# Get the username from key vault secret store
-data "azurerm_key_vault_secret" "vm_admin_username" {
+# Creates the Azure Key vault secret to store the VM username and password
+resource "azurerm_key_vault_secret" "vm_admin_username" {
   name         = "Spokevmvirtualmachineusername"
-  key_vault_id = data.azurerm_key_vault.Key_vault.id
+  value        = var.admin_username
+  key_vault_id = azurerm_key_vault.Key_vault.id
+  depends_on = [ azurerm_key_vault.Key_vault ]
 }
 
-# Get the password from key vault secret store
-data "azurerm_key_vault_secret" "vm_admin_password" {
+# Creates the Azure Key vault secret to store the VM username and password
+resource "azurerm_key_vault_secret" "vm_admin_password" {
   name         = "Spokevmvirtualmachinepassword"
-  key_vault_id = data.azurerm_key_vault.Key_vault.id
+  value        = var.admin_password
+  key_vault_id = azurerm_key_vault.Key_vault.id
+  depends_on = [ azurerm_key_vault.Key_vault ]
 }
 
 # Create the Virtual Machines(VM) and assign the NIC to specific VM
@@ -155,8 +183,8 @@ resource "azurerm_windows_virtual_machine" "VMs" {
   resource_group_name = azurerm_resource_group.On_Premises.name
   location = azurerm_resource_group.On_Premises.location
   size                  = "Standard_DS1_v2"
-  admin_username        = data.azurerm_key_vault_secret.vm_admin_username.value
-  admin_password        = data.azurerm_key_vault_secret.vm_admin_password.value
+  admin_username        = azurerm_key_vault_secret.vm_admin_username.value
+  admin_password        = azurerm_key_vault_secret.vm_admin_password.value
   network_interface_ids = [azurerm_network_interface.subnet_nic.id]
 
   os_disk {
@@ -170,7 +198,7 @@ resource "azurerm_windows_virtual_machine" "VMs" {
     sku       = "2019-Datacenter"
     version   = "latest"
   }
-  depends_on = [ azurerm_network_interface.subnet_nic , data.azurerm_key_vault_secret.vm_admin_password , data.azurerm_key_vault_secret.vm_admin_username]
+  depends_on = [ azurerm_network_interface.subnet_nic , azurerm_key_vault_secret.vm_admin_password , azurerm_key_vault_secret.vm_admin_username]
 }
 
 # Creates the route table
@@ -212,12 +240,17 @@ The following requirements are needed by this module:
 
 The following providers are used by this module:
 
+- <a name="provider_azuread"></a> [azuread](#provider\_azuread)
+
 - <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) (~> 3.0.2)
 
 ## Resources
 
 The following resources are used by this module:
 
+- [azurerm_key_vault.Key_vault](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/key_vault) (resource)
+- [azurerm_key_vault_secret.vm_admin_password](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/key_vault_secret) (resource)
+- [azurerm_key_vault_secret.vm_admin_username](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/key_vault_secret) (resource)
 - [azurerm_local_network_gateway.OnPremises_local_gateway](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/local_network_gateway) (resource)
 - [azurerm_network_interface.subnet_nic](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_interface) (resource)
 - [azurerm_public_ip.public_ips](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/public_ip) (resource)
@@ -230,9 +263,8 @@ The following resources are used by this module:
 - [azurerm_virtual_network_gateway.gateway](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_gateway) (resource)
 - [azurerm_virtual_network_gateway_connection.vpn_connection](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_gateway_connection) (resource)
 - [azurerm_windows_virtual_machine.VMs](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/windows_virtual_machine) (resource)
-- [azurerm_key_vault.Key_vault](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault) (data source)
-- [azurerm_key_vault_secret.vm_admin_password](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault_secret) (data source)
-- [azurerm_key_vault_secret.vm_admin_username](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault_secret) (data source)
+- [azuread_client_config.current](https://registry.terraform.io/providers/hashicorp/azuread/latest/docs/data-sources/client_config) (data source)
+- [azurerm_client_config.current](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/client_config) (data source)
 - [azurerm_public_ip.Hub-VPN-GW-public-ip](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/public_ip) (data source)
 - [azurerm_virtual_network.Hub_vnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/virtual_network) (data source)
 
@@ -240,6 +272,24 @@ The following resources are used by this module:
 ## Required Inputs
 
 The following input variables are required:
+
+### <a name="input_Key_vault_name"></a> [Key\_vault\_name](#input\_Key\_vault\_name)
+
+Description: The name of the Key Vault
+
+Type: `string`
+
+### <a name="input_admin_password"></a> [admin\_password](#input\_admin\_password)
+
+Description: The Password of the User
+
+Type: `string`
+
+### <a name="input_admin_username"></a> [admin\_username](#input\_admin\_username)
+
+Description: The Username of the User
+
+Type: `string`
 
 ### <a name="input_rg_location"></a> [rg\_location](#input\_rg\_location)
 

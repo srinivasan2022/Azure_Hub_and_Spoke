@@ -45,7 +45,7 @@ resource "azurerm_subnet" "subnets" {
   name = each.key
   address_prefixes = [each.value.address_prefix]
   virtual_network_name = azurerm_virtual_network.Hub_vnet["Hub_vnet"].name
-  resource_group_name = azurerm_resource_group.Hub["Hub_RG"].name
+  resource_group_name = azurerm_resource_group.Hub.name
   depends_on = [ azurerm_virtual_network.Hub_vnet ]
 }
 
@@ -58,6 +58,20 @@ resource "azurerm_public_ip" "public_ips" {
   allocation_method   = "Static"
   sku                 = "Standard"
   depends_on = [ azurerm_resource_group.Hub ]
+}
+
+# Creates the Azure Bastion
+resource "azurerm_bastion_host" "bastion" {
+  name                = "Bastion"
+  location            = azurerm_resource_group.Hub.location
+  resource_group_name = azurerm_resource_group.Hub.name
+  sku = "Standard"
+  ip_configuration {
+    name = "ipconfig"
+    public_ip_address_id = azurerm_public_ip.public_ips["AzureBastionSubnet"].id
+    subnet_id = azurerm_subnet.subnets["AzureBastionSubnet"].id 
+  }
+  depends_on = [ azurerm_subnet.subnets , azurerm_public_ip.public_ips]
 }
  
 # Create the Azure Firewall policy
@@ -102,21 +116,21 @@ resource "azurerm_firewall_policy_rule_collection_group" "fw_policy_rule_collect
   firewall_policy_id  = azurerm_firewall_policy.firewall_policy.id
   priority            = 100
 
-  nat_rule_collection {           # Create the DNAT rule collection for take the RDP to OnPremises VM
-    name     = "dnat-rule-collection"
-    priority = 100
-    action   = "Dnat"
+  # nat_rule_collection {           # Create the DNAT rule collection for take the RDP to OnPremises VM
+  #   name     = "dnat-rule-collection"
+  #   priority = 100
+  #   action   = "Dnat"
 
-    rule {
-      name             = "Allow-RDP"
-      source_addresses = ["49.37.209.34"]   # My Router IP
-      destination_ports = ["3389"]
-      destination_address = azurerm_public_ip.public_ips["AzureFirewallSubnet"].ip_address
-      translated_address = "10.100.2.4"   # destination VM IP
-      translated_port    = "3389"
-      protocols         = ["TCP"]
-    }
-  }
+  #   rule {
+  #     name             = "Allow-RDP"
+  #     source_addresses = ["49.37.209.34"]   # My Router IP
+  #     destination_ports = ["3389"]
+  #     destination_address = azurerm_public_ip.public_ips["AzureFirewallSubnet"].ip_address
+  #     translated_address = "10.100.2.4"   # destination VM IP
+  #     translated_port    = "3389"
+  #     protocols         = ["TCP"]
+  #   }
+  # }
  
   network_rule_collection {     # Create the Network rule collection for forwarding the traffic betwwen Hub and OnPremises network
     name     = "network-rule-collection"
@@ -126,7 +140,7 @@ resource "azurerm_firewall_policy_rule_collection_group" "fw_policy_rule_collect
     rule {
       name = "allow-spokes"
       source_addresses = [ "10.100.0.0/16" ]     # OnPremises network address
-      destination_addresses = [ "10.20.0.0/16" ] # Spoke network address
+      destination_addresses = [ "10.20.0.0/16" ] # Spoke_01 network address
       # destination_ip_groups = [ azurerm_ip_group.Ip_group.id ] # All Spoke network addresses
       destination_ports = [ "*" ]
       protocols = [ "Any" ]
@@ -151,26 +165,26 @@ resource "azurerm_firewall_policy_rule_collection_group" "fw_policy_rule_collect
     # }
   }
  
-  application_rule_collection {       # Create the Application rule collection
-    name     = "application-rule-collection"
-    priority = 300
-    action   = "Allow"
+  # application_rule_collection {       # Create the Application rule collection
+  #   name     = "application-rule-collection"
+  #   priority = 300
+  #   action   = "Allow"
  
-    rule {
-      name             = "allow-web"
-      description      = "Allow-Web-Access"
-      source_addresses = ["10.20.1.4"]  # Allow website only from [10.20.1.4]
-      protocols {
-        type = "Http"
-        port = 80
-      }
-      protocols {
-        type = "Https"
-        port = 443
-      } 
-      destination_fqdns = ["*.microsoft.com"]  
-    }
-  } 
+  #   rule {
+  #     name             = "allow-web"
+  #     description      = "Allow-Web-Access"
+  #     source_addresses = ["10.20.1.4"]  # Allow website only from [10.20.1.4]
+  #     protocols {
+  #       type = "Http"
+  #       port = 80
+  #     }
+  #     protocols {
+  #       type = "Https"
+  #       port = 443
+  #     } 
+  #     destination_fqdns = ["*.microsoft.com"]  
+  #   }
+  # } 
   depends_on = [ azurerm_firewall.firewall , azurerm_ip_group.Ip_group ]
 }
 
@@ -322,6 +336,7 @@ The following providers are used by this module:
 
 The following resources are used by this module:
 
+- [azurerm_bastion_host.bastion](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/bastion_host) (resource)
 - [azurerm_firewall.firewall](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/firewall) (resource)
 - [azurerm_firewall_policy.firewall_policy](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/firewall_policy) (resource)
 - [azurerm_firewall_policy_rule_collection_group.fw_policy_rule_collection](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/firewall_policy_rule_collection_group) (resource)

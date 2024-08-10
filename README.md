@@ -40,11 +40,46 @@ This hub-spoke network configuration uses the following architectural elements:
 **Azure Firewall:** An Azure Firewall managed firewall instance exists in its own subnet.
 
 ### Components:
+<img src="https://www.checkpoint.com/wp-content/uploads/microsoft-azure-virtual-networks-vnet.png" width="70px" align="right">
+
 **[Virtual Network:](https://learn.microsoft.com/en-us/azure/virtual-network/virtual-networks-overview)** Azure Virtual Network is the fundamental building block for private networks in Azure. Virtual Network enables many Azure resources, such as Azure VMs, to securely communicate with each other, cross-premises networks, and the internet.
+
+<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQf1tfUKFwY2aEQVeePMozBGvVWZvuU8HtEbw&s" width="80px" align="right">
 
 **[Azure Firewall:](https://learn.microsoft.com/en-us/azure/firewall/overview)** Azure Firewall is a managed cloud-based network security service that protects Virtual Network resources. This stateful firewall service has built-in high availability and unrestricted cloud scalability to help you create, enforce, and log application and network connectivity policies across subscriptions and virtual networks.
 
+<img src="https://azure.microsoft.com/svghandler/vpn-gateway/?width=600&height=315" width="80px" align="right">
+
 **[VPN Gateway:](https://learn.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-about-vpngateways)** VPN Gateway is a specific type of virtual network gateway that sends encrypted traffic between a virtual network and an on-premises location over the public internet. You can also use VPN Gateway to send encrypted traffic between Azure virtual networks over the Microsoft network.
+
+<img src="https://azure.microsoft.com/svghandler/azure-bastion/?width=600&height=315" width="80px" align="right">
+
+**[Azure Bastion:](https://learn.microsoft.com/en-us/azure/bastion/bastion-overview)** Azure Bastion is a fully managed PaaS service that you provision to securely connect to virtual machines via private IP address. It provides secure and seamless RDP/SSH connectivity to your virtual machines directly over TLS from the Azure portal, or via the native SSH or RDP client already installed on your local computer. When you connect via Azure Bastion, your virtual machines don't need a public IP address, agent, or special client software.
+
+<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQhggq3ThuvGbOvBmSVBjZIvNoq-oK-P7rRlQ&s" width="80px" align="right">
+
+**[Application Gateway:](https://learn.microsoft.com/en-us/azure/application-gateway/overview)** Azure Application Gateway is a web traffic (OSI layer 7) load balancer that enables you to manage traffic to your web applications. It can make routing decisions based on additional attributes of an HTTP request, for example URI path or host headers. For example, you can route traffic based on the incoming URL. So if /images is in the incoming URL, you can route traffic to a specific set of servers (known as a pool) configured for images. If /video is in the URL, that traffic is routed to another pool that's optimized for videos.
+
+<img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRnLhoOuv9e7NLuruhd4L9hiGRkVF0KGxlIJA&s" width="70px" align="right">
+
+**[App Service:](https://learn.microsoft.com/en-us/azure/app-service/overview)** Azure App Service is an HTTP-based service for hosting web applications, REST APIs, and mobile back ends. You can develop in your favorite language, be it .NET, .NET Core, Java, Node.js, PHP, and Python. Applications run and scale with ease on both Windows and Linux-based environments.
+
+<img src="https://www.techielass.com/content/images/2021/03/azuredns-1.png" width="70px" align="right">
+
+**[Azure Private DNS zone:](https://learn.microsoft.com/en-us/azure/dns/private-dns-privatednszone)** Azure Private DNS provides a reliable, secure DNS service to manage and resolve domain names in a virtual network without the need to add a custom DNS solution. By using private DNS zones, you can use your own custom domain names rather than the Azure-provided names available today.
+
+<img src="https://user-images.githubusercontent.com/37974296/113137352-59e74380-921c-11eb-97e4-bcaf90528ae7.png" width="70px" align="right">
+
+**[Private Endpoint:](https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-overview)** A private endpoint is a network interface that uses a private IP address from your virtual network. This network interface connects you privately and securely to a service that's powered by Azure Private Link. By enabling a private endpoint, you're bringing the service into your virtual network.
+
+The service could be an Azure service such as:
+
+- Azure Storage
+- Azure Cosmos DB
+- Azure SQL Database
+- Your own service, using Private Link service.
+
+<img src="https://azure.microsoft.com/svghandler/monitor/?width=600&height=315" width="80px" align="right">
 
 **[Azure Monitor:](https://learn.microsoft.com/en-us/azure/azure-monitor/overview)** Azure Monitor can collect, analyze, and act on telemetry data from cross-premises environments, including Azure and on-premises. Azure Monitor helps you maximize the performance and availability of your applications and proactively identify problems in seconds.
 
@@ -67,7 +102,7 @@ The virtual network gateway requires a specific subnet named <mark>GatewaySubnet
 #### AzureFirewallSubnet:
 The AzureFirewallSubnet is a specialized subnet in Azure Virtual Network for hosting the Azure Firewall, a cloud-based network security service.Requires at least a /26 subnet (64 IP addresses).<mark>This subnet doesn't support network security groups (NSGs)</mark>.
 #### Dedicated Subnets:
-A dedicated subnet in Azure is a specific range of IP addresses allocated within a Virtual Network (VNet) for particular resources or services. These subnets provide isolation and specific network configurations, such as for Azure Virtual Machines, VPN Gateways, Application Gateways, and other Azure services. They are crucial for managing security and network policies effectively.
+A [dedicated subnet](https://learn.microsoft.com/en-us/azure/virtual-network/virtual-network-for-azure-services#services-that-can-be-deployed-into-a-virtual-network) in Azure is a specific range of IP addresses allocated within a Virtual Network (VNet) for particular resources or services. These subnets provide isolation and specific network configurations, such as for Azure Virtual Machines, VPN Gateways, Application Gateways, and other Azure services. They are crucial for managing security and network policies effectively.
 
 <details>
 <summary>The dedicated subnets are ,</summary>
@@ -118,6 +153,8 @@ There are two main ways to allow spoke virtual networks to communicate with each
 #### Communication through an NVA:
 If you need connectivity between spokes, consider deploying Azure Firewall or another NVA in the hub. Then create routes to forward traffic from a spoke to the firewall or NVA, which can then route to the second spoke. In this scenario, you must <mark>configure the peering connections to allow forwarded traffic</mark>.
 
+<img src="https://learn.microsoft.com/en-us/azure/architecture/networking/architecture/_images/spoke-spoke-routing.png">
+
 You can also use a VPN gateway to route traffic between spokes, although this choice affects latency and throughput. For configuration details, see [Configure VPN gateway transit for virtual network peering](https://learn.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-peering-gateway-transit).
 
 Evaluate the services you share in the hub to ensure that the hub scales for a larger number of spokes. For instance, if your hub provides firewall services, consider your firewall solution's bandwidth limits when you add multiple spokes. You can move some of these shared services to a second level of hubs.
@@ -142,3 +179,4 @@ Evaluate the services you share in the hub to ensure that the hub scales for a l
 </div>
 
 ---
+

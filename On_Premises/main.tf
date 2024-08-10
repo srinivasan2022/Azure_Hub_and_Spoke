@@ -1,3 +1,6 @@
+data "azurerm_client_config" "current" {}
+data "azuread_client_config" "current" {}
+
 # Create the Resource Group
 resource "azurerm_resource_group" "On_Premises" {
    name     = var.rg_name
@@ -110,8 +113,8 @@ resource "azurerm_network_interface" "subnet_nic" {
 # Creates the Azure Key vault to store the VM username and password
 resource "azurerm_key_vault" "Key_vault" {
   name                        = var.Key_vault_name
-  resource_group_name = azurerm_resource_group.Spoke_01.name
-  location = azurerm_resource_group.Spoke_01.location
+  resource_group_name = azurerm_resource_group.On_Premises.name
+  location = azurerm_resource_group.On_Premises.location
   sku_name                    = "standard"
   tenant_id                   = data.azurerm_client_config.current.tenant_id
   purge_protection_enabled    = true
@@ -131,7 +134,7 @@ resource "azurerm_key_vault" "Key_vault" {
       "Restore",
     ]
   }
-  depends_on = [ azurerm_resource_group.Spoke_01 ]
+  depends_on = [ azurerm_resource_group.On_Premises ]
 }
 
 # Creates the Azure Key vault secret to store the VM username and password
