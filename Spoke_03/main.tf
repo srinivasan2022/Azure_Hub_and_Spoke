@@ -22,7 +22,7 @@ resource "azurerm_subnet" "subnets" {
   virtual_network_name = azurerm_virtual_network.Spoke_03_vnet["Spoke_03_vnet"].name
   resource_group_name = azurerm_resource_group.Spoke_03.name
  dynamic "delegation" {
-    for_each = each.key == "AppServiceSubnet" ? [1] : []
+    for_each = each.key == "VnetIntegrationSubnet" ? [1] : []
     content{
         name = "appservice_delegation"
         service_delegation {
@@ -61,7 +61,7 @@ resource "azurerm_app_service" "web_app" {
 # Enable the Virtual Network Integration to App services
 resource "azurerm_app_service_virtual_network_swift_connection" "vnet_integration" {
   app_service_id = azurerm_app_service.web_app.id
-  subnet_id = azurerm_subnet.subnets["AppServiceSubnet"].id
+  subnet_id = azurerm_subnet.subnets["VnetIntegrationSubnet"].id
   depends_on = [ azurerm_app_service.web_app , azurerm_subnet.subnets ]
 }
 
@@ -97,47 +97,47 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_03" {
   depends_on = [ azurerm_virtual_network.Spoke_03_vnet , data.azurerm_virtual_network.Hub_vnet ]
 }
 
-#Creates the private endpoint
-resource "azurerm_private_endpoint" "app_endpoint" {
-  name = var.private_endpoint_name
-  resource_group_name = azurerm_app_service.web_app.resource_group_name
-  location = azurerm_app_service.web_app.location
-  subnet_id = azurerm_subnet.subnets["web_subnet"].id
-  private_service_connection {
-    name = "web_app_privatelink"
-    private_connection_resource_id = azurerm_app_service.web_app.id
-    subresource_names = [ "sites" ]
-    is_manual_connection = false
-  }
-  depends_on = [ azurerm_subnet.subnets , azurerm_app_service.web_app ]
-}
+# # Creates the private endpoint
+# resource "azurerm_private_endpoint" "app_endpoint" {
+#   name = var.private_endpoint_name
+#   resource_group_name = azurerm_app_service.web_app.resource_group_name
+#   location = azurerm_app_service.web_app.location
+#   subnet_id = azurerm_subnet.subnets["AppServiceSubnet"].id
+#   private_service_connection {
+#     name = "web_app_privatelink"
+#     private_connection_resource_id = azurerm_app_service.web_app.id
+#     subresource_names = [ "sites" ]
+#     is_manual_connection = false
+#   }
+#   depends_on = [ azurerm_subnet.subnets , azurerm_app_service.web_app ]
+# }
 
-# Creates the private DNS zone
-resource "azurerm_private_dns_zone" "pr_dns_zone" {
-  name = var.private_dns_zone_name
-  resource_group_name = azurerm_resource_group.Spoke_03.name
-  depends_on = [ azurerm_resource_group.Spoke_03 ]
-}
+# # Creates the private DNS zone
+# resource "azurerm_private_dns_zone" "pr_dns_zone" {
+#   name = var.private_dns_zone_name
+#   resource_group_name = azurerm_resource_group.Spoke_03.name
+#   depends_on = [ azurerm_resource_group.Spoke_03 ]
+# }
 
-# Creates the virtual network link in private DNS zone
-resource "azurerm_private_dns_zone_virtual_network_link" "vnet_link" {
-  name = var.private_dns_zone_vnet_link
-  resource_group_name = azurerm_private_dns_zone.pr_dns_zone.resource_group_name
-  private_dns_zone_name = azurerm_private_dns_zone.pr_dns_zone.name
-  virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id     # Creates the link to Hub vnet
-  #virtual_network_id = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].id
-  depends_on = [ azurerm_private_dns_zone.pr_dns_zone , data.azurerm_virtual_network.Hub_vnet ]
-}
+# # Creates the virtual network link in private DNS zone
+# resource "azurerm_private_dns_zone_virtual_network_link" "vnet_link" {
+#   name = var.private_dns_zone_vnet_link
+#   resource_group_name = azurerm_private_dns_zone.pr_dns_zone.resource_group_name
+#   private_dns_zone_name = azurerm_private_dns_zone.pr_dns_zone.name
+#   virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id     # Creates the link to Hub vnet
+#   #virtual_network_id = azurerm_virtual_network.Spoke_01_vnet["Spoke_03_vnet"].id
+#   depends_on = [ azurerm_private_dns_zone.pr_dns_zone , data.azurerm_virtual_network.Hub_vnet ]
+# }
 
-# Creates the records in private DNS zone
-resource "azurerm_private_dns_a_record" "dns_record" {
-  name = var.private_dns_a_record
-  zone_name = azurerm_private_dns_zone.pr_dns_zone.name
-  resource_group_name = azurerm_private_dns_zone.pr_dns_zone.resource_group_name
-  ttl = 300
-  records = [ azurerm_private_endpoint.app_endpoint.private_service_connection[0].private_ip_address ]
-  depends_on = [ azurerm_private_dns_zone.pr_dns_zone , azurerm_private_endpoint.app_endpoint  ]
-}
+# # Creates the records in private DNS zone
+# resource "azurerm_private_dns_a_record" "dns_record" {
+#   name = var.private_dns_a_record
+#   zone_name = azurerm_private_dns_zone.pr_dns_zone.name
+#   resource_group_name = azurerm_private_dns_zone.pr_dns_zone.resource_group_name
+#   ttl = 300
+#   records = [ azurerm_private_endpoint.app_endpoint.private_service_connection[0].private_ip_address ]
+#   depends_on = [ azurerm_private_dns_zone.pr_dns_zone , azurerm_private_endpoint.app_endpoint  ]
+# }
 
 
 # # Creates the policy definition

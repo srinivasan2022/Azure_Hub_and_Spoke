@@ -9,13 +9,13 @@ vnet_details = {
 }
 
 subnet_details = {
+
+     "VnetIntegrationSubnet" = {
+      subnet_name = "VnetIntegrationSubnet"
+      address_prefix = "10.40.0.0/27"
+    } ,
     "AppServiceSubnet" = {
       subnet_name = "AppServiceSubnet"
-      address_prefix = "10.40.0.0/27"
-    }
-
-    "web_subnet" = {
-      subnet_name = "web_subnet"
       address_prefix = "10.40.1.0/26"
     }
 }

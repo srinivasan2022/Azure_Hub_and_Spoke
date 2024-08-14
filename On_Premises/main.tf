@@ -73,8 +73,8 @@ data "azurerm_virtual_network" "Hub_vnet" {
 # Create the Local Network Gateway for VPN Gateway
 resource "azurerm_local_network_gateway" "OnPremises_local_gateway" {
   name                = "OnPremises-To-Hub"
-  location            = azurerm_virtual_network_gateway.gateway.resource_group_name
-  resource_group_name = azurerm_virtual_network_gateway.gateway.location
+  location            = azurerm_virtual_network_gateway.gateway.location
+  resource_group_name = azurerm_virtual_network_gateway.gateway.resource_group_name
   gateway_address     = data.azurerm_public_ip.Hub-VPN-GW-public-ip.ip_address     # Replace the Hub-VPN Public-IP
   address_space       = [data.azurerm_virtual_network.Hub_vnet.address_space[0]]   # Replace the Hub-Vnet address space
   depends_on = [ azurerm_public_ip.public_ips , azurerm_virtual_network_gateway.gateway ,
@@ -84,8 +84,8 @@ resource "azurerm_local_network_gateway" "OnPremises_local_gateway" {
 # Create the VPN-Connection for Connecting the Networks
 resource "azurerm_virtual_network_gateway_connection" "vpn_connection" {
   name                = "OnPremises-Hub-vpn-connection"
-  location            = azurerm_virtual_network_gateway.gateway.resource_group_name
-  resource_group_name = azurerm_virtual_network_gateway.gateway.location
+  location            = azurerm_virtual_network_gateway.gateway.location
+  resource_group_name = azurerm_virtual_network_gateway.gateway.resource_group_name
   virtual_network_gateway_id     = azurerm_virtual_network_gateway.gateway.id
   local_network_gateway_id       = azurerm_local_network_gateway.OnPremises_local_gateway.id
   type                           = "IPsec"
