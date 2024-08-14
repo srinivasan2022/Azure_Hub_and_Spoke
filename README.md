@@ -7,7 +7,7 @@ This project will implement an Azure [Hub and Spoke](https://learn.microsoft.com
 
 
 #### Steps :
-<mark>NOTE : </mark>
+<mark>NOTE : </mark><br>
 <mark>1.First we have to create the backend file for storing the state files.<br> 2.Next , we creates the Hub or OnPremises Network. <br> 3.Then we can creates the other Spoke Networks.</mark>
 - 1.We need to create the On_Premises , Hub , Spoke_01 , Spoke_02 , Spoke_03 networks.
 - 2.Hub is the central point of connectivity between Hub and Spoke networks.
