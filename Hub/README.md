@@ -317,6 +317,10 @@ resource "azurerm_subnet_route_table_association" "RT-ass" {
 
 ```
 
+### ScreenShot :
+
+![hub](https://github.com/user-attachments/assets/ded069ba-35d3-408a-8649-caf233e6faf1)
+
 <!-- markdownlint-disable MD033 -->
 ## Requirements
 
