@@ -85,7 +85,7 @@ The service could be an Azure service such as:
 - Azure SQL Database
 - Your own service, using Private Link service.
 
-<img src="https://www.outsystems.com/Forge_BL/rest/ComponentThumbnail/GetURL_ComponentThumbnail?ProjectImageId=38908" width="50px" align="right">
+<img src="https://ms-azuretools.gallerycdn.vsassets.io/extensions/ms-azuretools/vscode-azurestorage/0.16.0/1720461176238/Microsoft.VisualStudio.Services.Icons.Default" width="50px" align="right">
 
 **[Storage Account:](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview)** An Azure Storage account is a cloud-based storage product that allows users to store and manage large amounts of unstructured data in the form of tables, files, blobs, queues, and disks. It provides a <mark>unique namespace</mark> for Azure Storage data that is accessible from anywhere in the world over HTTP or HTTPS.
 
