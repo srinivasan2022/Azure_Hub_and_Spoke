@@ -317,7 +317,7 @@ resource "azurerm_subnet_route_table_association" "RT-ass" {
 
 ```
 
-### ScreenShot :
+### Resource Visualizer in Azure portal :
 
 ![hub](https://github.com/user-attachments/assets/ded069ba-35d3-408a-8649-caf233e6faf1)
 

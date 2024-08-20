@@ -227,7 +227,7 @@ resource "azurerm_subnet_route_table_association" "RT-ass" {
 }
 ```
 
-### Screenshot :
+### Resource Visualizer in Azure portal :
 ![onprem](https://github.com/user-attachments/assets/3bf2d307-3dfb-4ec2-8525-92ae0858dab2)
 
 <!-- markdownlint-disable MD033 -->

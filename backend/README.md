@@ -54,7 +54,7 @@ resource "azurerm_storage_container" "project_state" {
 }
  
 ```
-### Screenshot :
+### Resource Visualizer in Azure portal :
 
 ![backend](https://github.com/user-attachments/assets/d4198f04-f8e0-4a2f-8f54-3f3591d401ba)
 

@@ -6,11 +6,11 @@
 This project will implement an Azure [Hub and Spoke](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/hub-spoke-network-topology) architecture to support a student details application, focusing on security and efficiency. This architecture will feature a centralized hub for shared resources and multiple spoke networks for isolated environments, ensuring high availability and resiliency. Key elements include guard rails to enforce governance, robust security measures including encryption and firewalls, and comprehensive monitoring and logging capabilities. The solution will also incorporate backup and recovery strategies to protect data integrity and ensure business continuity. 
 
 <mark>NOTE : </mark><br>
-- 1.First we have to create the [backend](https://github.com/srinivasan2022/Project/tree/main/backend) file for storing the state files. 
-- 2.Next , we creates the [Hub](https://github.com/srinivasan2022/Project/tree/main/Hub) or [OnPremises](https://github.com/srinivasan2022/Project/tree/main/On_Premises) Network , then we creates the Onprem network.
-- 3.If we creates the Hub network , we should creates still gateway in [Hub](https://github.com/srinivasan2022/Project/tree/main/Hub) network , because Onprem(vnet address and gateway Ip) network is required for Hub network , then we creates the Hub network.
-- 4.If not so , If we creates the [Onprem](https://github.com/srinivasan2022/Project/tree/main/On_Premises) network , we should creates still gateway in Onprem network , because Hub(vnet address and gateway Ip) network is required for Onprem network. 
-- 5.Then we can creates the other [Spoke-01](https://github.com/srinivasan2022/Project/tree/main/Spoke_01) , [Spoke-02](https://github.com/srinivasan2022/Project/tree/main/Spoke_02) and [Spoke-03](https://github.com/srinivasan2022/Project/tree/main/Spoke_03) Networks.
+- 1.First we have to create the [backend](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/backend) file for storing the state files. 
+- 2.Next , we creates the [Hub](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/Hub) or [OnPremises](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/On_Premises) Network , then we creates the Onprem network.
+- 3.If we creates the [Hub](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/Hub) network , we should creates still gateway in [Hub](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/Hub) network , because [Onprem](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/On_Premises) vnet address and gateway Ip addresss are required for [Hub](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/Hub) network , then we creates the [Onprem](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/On_Premises) network.
+- 4.If not so , If we creates the [Onprem](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/On_Premises) network , we should creates still gateway in [Onprem](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/On_Premises) network , because [Hub](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/Hub) vnet address and gateway Ip address are required for [Onprem](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/On_Premises) network , then we creates the [Hub](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/Hub) network. 
+- 5.Then we can creates the other [Spoke-01](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/Spoke_01) , [Spoke-02](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/Spoke_02) and [Spoke-03](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/Spoke_03) Networks.
 
 #### Steps :
 
@@ -84,6 +84,14 @@ The service could be an Azure service such as:
 - Azure Cosmos DB
 - Azure SQL Database
 - Your own service, using Private Link service.
+
+<img src="https://www.outsystems.com/Forge_BL/rest/ComponentThumbnail/GetURL_ComponentThumbnail?ProjectImageId=38908" width="50px" align="right">
+
+**[Storage Account:](https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview)** An Azure Storage account is a cloud-based storage product that allows users to store and manage large amounts of unstructured data in the form of tables, files, blobs, queues, and disks. It provides a <mark>unique namespace</mark> for Azure Storage data that is accessible from anywhere in the world over HTTP or HTTPS.
+
+<img src="https://feras.blog/wp-content/uploads/File-shares.png" width="50px" align="right">
+
+**[Azure File Share:](https://learn.microsoft.com/en-us/azure/storage/files/storage-files-introduction)** Azure Files offers fully managed file shares in the cloud that are accessible via the industry standard <mark>Server Message Block (SMB) protocol, Network File System (NFS) protocol</mark>, and Azure Files REST API. Azure file shares can be mounted concurrently by cloud or on-premises deployments. <mark>SMB Azure file shares are accessible from Windows, Linux, and macOS clients</mark>. <mark>NFS Azure file shares are accessible from Linux clients</mark>. Additionally, SMB Azure file shares can be cached on Windows servers with Azure File Sync for fast access near where the data is being used.
 
 <img src="https://azure.microsoft.com/svghandler/monitor/?width=600&height=315" width="100px" align="right">
 

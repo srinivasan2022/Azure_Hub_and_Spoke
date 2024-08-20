@@ -201,7 +201,7 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_03" {
 # }
 ```
 
-### ScreenShot :
+### Resource Visualizer in Azure portal :
 
 ![sp3](https://github.com/user-attachments/assets/66d57aeb-4f15-42a7-8dcd-02e09e906ea9)
 

@@ -11,11 +11,11 @@ vnet_details = {
 subnet_details = {
 
      "VnetIntegrationSubnet" = {
-      subnet_name = "VnetIntegrationSubnet"
+      subnet_name = "VnetIntegrationSubnet"    # This Subnet is created for VnetIntegration with appservices.
       address_prefix = "10.40.0.0/27"
     } ,
     "AppServiceSubnet" = {
-      subnet_name = "AppServiceSubnet"
+      subnet_name = "AppServiceSubnet"         # This Subnet is created for private endpoint.
       address_prefix = "10.40.1.0/26"
     }
 }
