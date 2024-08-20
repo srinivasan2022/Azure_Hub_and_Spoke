@@ -5,10 +5,15 @@
 #### Description :
 This project will implement an Azure [Hub and Spoke](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/azure-best-practices/hub-spoke-network-topology) architecture to support a student details application, focusing on security and efficiency. This architecture will feature a centralized hub for shared resources and multiple spoke networks for isolated environments, ensuring high availability and resiliency. Key elements include guard rails to enforce governance, robust security measures including encryption and firewalls, and comprehensive monitoring and logging capabilities. The solution will also incorporate backup and recovery strategies to protect data integrity and ensure business continuity. 
 
+<mark>NOTE : </mark><br>
+- 1.First we have to create the [backend](https://github.com/srinivasan2022/Project/tree/main/backend) file for storing the state files. 
+- 2.Next , we creates the [Hub](https://github.com/srinivasan2022/Project/tree/main/Hub) or [OnPremises](https://github.com/srinivasan2022/Project/tree/main/On_Premises) Network , then we creates the Onprem network.
+- 3.If we creates the Hub network , we should creates still gateway in [Hub](https://github.com/srinivasan2022/Project/tree/main/Hub) network , because Onprem(vnet address and gateway Ip) network is required for Hub network , then we creates the Hub network.
+- 4.If not so , If we creates the [Onprem](https://github.com/srinivasan2022/Project/tree/main/On_Premises) network , we should creates still gateway in Onprem network , because Hub(vnet address and gateway Ip) network is required for Onprem network. 
+- 5.Then we can creates the other [Spoke-01](https://github.com/srinivasan2022/Project/tree/main/Spoke_01) , [Spoke-02](https://github.com/srinivasan2022/Project/tree/main/Spoke_02) and [Spoke-03](https://github.com/srinivasan2022/Project/tree/main/Spoke_03) Networks.
 
 #### Steps :
-<mark>NOTE : </mark><br>
-<mark>1.First we have to create the backend file for storing the state files.<br> 2.Next , we creates the Hub or OnPremises Network. <br> 3.Then we can creates the other Spoke Networks.</mark>
+
 - 1.We need to create the On_Premises , Hub , Spoke_01 , Spoke_02 , Spoke_03 networks.
 - 2.Hub is the central point of connectivity between Hub and Spoke networks.
 - 3.The On_premises network establish the connection to Hub network through the internet using VPN Gateway (S2S).
