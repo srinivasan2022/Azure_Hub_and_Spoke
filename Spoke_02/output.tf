@@ -14,7 +14,4 @@ output "public_ip" {
   value = azurerm_public_ip.public_ip
 }
 
-output "AppGW" {
-  value = azurerm_application_gateway.appGW
-}
 

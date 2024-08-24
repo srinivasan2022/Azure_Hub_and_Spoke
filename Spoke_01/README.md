@@ -102,7 +102,7 @@ resource "azurerm_network_interface" "subnet_nic" {
 
 # Fetch the data from key vault
 data "azurerm_key_vault" "Key_vault" {
-  name                = "MyKeyVault160322"
+  name                = "AzMyKeyVault160322"
   resource_group_name = "On_Premises_RG"
 }
 
@@ -164,67 +164,6 @@ resource "azurerm_storage_share" "fileshare" {
   depends_on = [ azurerm_resource_group.Spoke_01 , azurerm_storage_account.storage-account ]
 }
 
-# #Creates the private endpoint
-# resource "azurerm_private_endpoint" "storage_endpoint" {
-#   name = var.private_endpoint_name
-#   resource_group_name = azurerm_storage_account.storage-account.resource_group_name
-#   location = azurerm_storage_account.storage-account.location
-#   subnet_id = azurerm_subnet.subnets["Web-01"].id
-#   private_service_connection {
-#     name = "storage_privatelink"
-#     private_connection_resource_id = azurerm_storage_account.storage-account.id
-#     subresource_names = [ "file" ]
-#     is_manual_connection = false
-#   }
-#   depends_on = [ azurerm_subnet.subnets , azurerm_storage_account.storage-account , azurerm_storage_share.fileshare ]
-# }
-
-# # Creates the private DNS zone
-# resource "azurerm_private_dns_zone" "pr_dns_zone" {
-#   name = var.private_dns_zone_name
-#   resource_group_name = azurerm_resource_group.Spoke_01.name
-#   depends_on = [ azurerm_resource_group.Spoke_01 ]
-# }
-
-# # Creates the virtual network link in private DNS zone
-# resource "azurerm_private_dns_zone_virtual_network_link" "vnet_link" {
-#   name = var.private_dns_zone_vnet_link
-#   resource_group_name = azurerm_private_dns_zone.pr_dns_zone.resource_group_name
-#   private_dns_zone_name = azurerm_private_dns_zone.pr_dns_zone.name
-#   virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id     # Creates the link to Hub vnet
-#   #virtual_network_id = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].id
-#   depends_on = [ azurerm_private_dns_zone.pr_dns_zone , data.azurerm_virtual_network.Hub_vnet ]
-# }
-
-# # Creates the records in private DNS zone
-# resource "azurerm_private_dns_a_record" "dns_record" {
-#   name = var.private_dns_a_record
-#   zone_name = azurerm_private_dns_zone.pr_dns_zone.name
-#   resource_group_name = azurerm_private_dns_zone.pr_dns_zone.resource_group_name
-#   ttl = 300
-#   records = [ azurerm_private_endpoint.storage_endpoint.private_service_connection[0].private_ip_address ]
-#   depends_on = [ azurerm_private_dns_zone.pr_dns_zone , azurerm_private_endpoint.storage_endpoint  ]
-# }
-
-
-# Mount the fileshare to Vitrual Machine
-resource "azurerm_virtual_machine_extension" "your-extension" {
-  name                 = "vm-extension-name"
-  virtual_machine_id   = azurerm_windows_virtual_machine.VMs["Web-01"].id
-  publisher            = "Microsoft.Compute"
-  type                 = "CustomScriptExtension"
-  type_handler_version = "1.9"
-
-  protected_settings = <<SETTINGS
-  {
-   "commandToExecute": "powershell -command \"[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${local.base64EncodedScript }')) | Out-File -filepath postBuild.ps1\" && powershell -ExecutionPolicy Unrestricted -File postBuild.ps1"
-  }
-  SETTINGS
-
-  depends_on = [azurerm_windows_virtual_machine.VMs]
-}
-
-
 # Create the data disk
 resource "azurerm_managed_disk" "data_disk" {
   name                 = var.data_disk_name
@@ -277,129 +216,68 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_01" {
   depends_on = [ azurerm_virtual_network.Spoke_01_vnet , data.azurerm_virtual_network.Hub_vnet ]
 }
 
+resource "local_file" "mount_file_share" {
+  filename = "${path.module}/mount-fileshare.ps1" # Path to save the script
 
-# # Creates the policy definition
-# resource "azurerm_policy_definition" "rg_policy_def" {
-#   name         = "Spoke01_rg-policy"
-#   policy_type  = "Custom"
-#   mode         = "All"
-#   display_name = "Spoke01 Policy"
-#   description  = "A policy to demonstrate resource group level policy."
- 
-#   policy_rule = <<POLICY_RULE
-#   {
-#     "if": {
-#       "field": "location",
-#       "equals": "East US"
-#     },
-#     "then": {
-#       "effect": "deny"
-#     }
-#   }
-#   POLICY_RULE
- 
-#   metadata = <<METADATA
-#   {
-#     "category": "General"
-#   }
-#   METADATA
-# }
- 
-# # Assign the policy
-# resource "azurerm_policy_assignment" "example" {
-#   name                 = "Spoke01-rg-policy-assignment"
-#   policy_definition_id = azurerm_policy_definition.rg_policy_def.id
-#   scope                = azurerm_resource_group.Spoke_01["Spoke_01_RG"].id
-#   display_name         = "Spoke01_RG Policy Assignment"
-#   description          = "Assigning policy to the resource group"
-# }
+  content = <<-EOF
+   $storageAccountName = "${azurerm_storage_account.storage-account.name}"
+  $shareName = "${azurerm_storage_share.fileshare.name}"
+  $storageAccountKey = "${azurerm_storage_account.storage-account.primary_access_key}"
 
-# # Creates the Log Analytics workspace 
-# resource "azurerm_log_analytics_workspace" "log_analytics" {
-#   name                = "example-law"
-#   resource_group_name = azurerm_resource_group.Spoke_01.name
-#   location = azurerm_resource_group.Spoke_01.location
-#   sku                 = "PerGB2018"
-#   retention_in_days   = 10
-# }
+  # Mount point for the file share
+  \$mountPoint = "Z:"
 
-# # 
-# resource "azurerm_monitor_diagnostic_setting" "vnet_monitor" {
-#   name               = "diag-settings-vnet"
-#   target_resource_id = azurerm_virtual_network.Spoke_01_vnet["Spoke_01_vnet"].id
-#   log_analytics_workspace_id = azurerm_log_analytics_workspace.log_analytics.id
- 
-#   log {
-#     category = "NetworkSecurityGroupEvent"
-#     enabled  = true
- 
-#     retention_policy {
-#       enabled = false
-#     }
-#   }
-# }
- 
-# resource "azurerm_monitor_diagnostic_setting" "vm_monitor" {
-#   name               = "diag-settings-vm"
-#   target_resource_id = azurerm_windows_virtual_machine.VMs[each.key].id
-#   log_analytics_workspace_id = azurerm_log_analytics_workspace.example.id
- 
-#   log {
-#     category = "GuestOSUpdate"
-#     enabled  = true
- 
-#     retention_policy {
-#       enabled = false
-#     }
-#   }
- 
-#   metric {
-#     category = "AllMetrics"
-#     enabled  = true
- 
-#     retention_policy {
-#       enabled = false
-#     }
-#   }
-# }
+  # Create the credential object
+  \$user = "\$storageAccountName"
+  \$pass = ConvertTo-SecureString -String "\$storageAccountKey" -AsPlainText -Force
+  \$credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList \$user, \$pass
+
+  # Mount the file share
+  New-PSDrive -Name \$mountPoint.Substring(0, 1) -PSProvider FileSystem -Root "\\\\\$storageAccountName.file.core.windows.net\\\$shareName" -Credential \$credential -Persist
+
+  # Ensure the drive is mounted at startup
+  \$script = "New-PSDrive -Name \$(\$mountPoint.Substring(0, 1)) -PSProvider FileSystem -Root '\\\\\$storageAccountName.file.core.windows.net\\\$shareName' -Credential (New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList \$user, \$pass) -Persist"
+  \$scriptBlock = [scriptblock]::Create(\$script)
+  Set-Content -Path C:\\mount-fileshare.ps1 -Value \$scriptBlock
+  EOF
+  depends_on = [ azurerm_windows_virtual_machine.VMs , azurerm_storage_share.fileshare ]
+}
 
 
-# # Create Recovery Services Vault
-# resource "azurerm_recovery_services_vault" "vault" {
-#   name                = "exampleRecoveryServicesVault"
-#   location            = azurerm_resource_group.rg.location
-#   resource_group_name = azurerm_resource_group.rg.name
-#   sku                 = "Standard"
-# }
+# Create Recovery Services Vault
+resource "azurerm_recovery_services_vault" "vault" {
+  name                = "RecoveryServicesVault001"
+  location            = azurerm_resource_group.Spoke_01.location
+  resource_group_name = azurerm_resource_group.Spoke_01.name
+  sku                 = "Standard"
+}
  
-# # Create Backup Policy
-# resource "azurerm_backup_policy_vm" "backup_policy" {
-#   name                = "exampleBackupPolicy"
-#   resource_group_name = azurerm_resource_group.rg.name
-#   recovery_vault_name = azurerm_recovery_services_vault.vault.name
+# Create Backup Policy
+resource "azurerm_backup_policy_vm" "backup_policy" {
+  name                = "VmBackupPolicy"
+  resource_group_name = azurerm_resource_group.Spoke_01.name
+  recovery_vault_name = azurerm_recovery_services_vault.vault.name
  
-#   retention_daily {
-#     count = 7
-#   }
+  retention_daily {
+    count = 7
+  }
  
-#   backup {
-#     frequency = "Daily"
-#     time      = "23:00"
-#   }
-# }
- 
-# # Enable Backup for VM
-# resource "azurerm_backup_protected_vm" "protected_vm" {
-#   resource_group_name    = azurerm_resource_group.rg.name
-#   recovery_vault_name    = azurerm_recovery_services_vault.vault.name
-#   source_vm_id           = azurerm_virtual_machine.vm.id
-#   backup_policy_id       = azurerm_backup_policy_vm.backup_policy.id
-# }
+  backup {
+    frequency = "Daily"
+    time      = "23:00"
+  }
+}
+
+# Enable Backup for VM
+resource "azurerm_backup_protected_vm" "protected_vm" {
+  for_each = azurerm_windows_virtual_machine.VMs
+  resource_group_name    = azurerm_resource_group.Spoke_01.name
+  recovery_vault_name    = azurerm_recovery_services_vault.vault.name
+  source_vm_id           = each.key.id
+  backup_policy_id       = azurerm_backup_policy_vm.backup_policy.id
+}
  
 ```
-### Resource Visualizer in Azure portal :
-
-![sp1](https://github.com/user-attachments/assets/b1a5431c-b026-4614-ba12-a3a281b707b7)
 
 <!-- markdownlint-disable MD033 -->
 ## Requirements
@@ -416,24 +294,29 @@ The following providers are used by this module:
 
 - <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) (~> 3.0.2)
 
+- <a name="provider_local"></a> [local](#provider\_local)
+
 ## Resources
 
 The following resources are used by this module:
 
+- [azurerm_backup_policy_vm.backup_policy](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/backup_policy_vm) (resource)
+- [azurerm_backup_protected_vm.protected_vm](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/backup_protected_vm) (resource)
 - [azurerm_managed_disk.data_disk](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/managed_disk) (resource)
 - [azurerm_network_interface.subnet_nic](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_interface) (resource)
 - [azurerm_network_security_group.nsg](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_security_group) (resource)
+- [azurerm_recovery_services_vault.vault](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/recovery_services_vault) (resource)
 - [azurerm_resource_group.Spoke_01](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) (resource)
 - [azurerm_storage_account.storage-account](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_account) (resource)
 - [azurerm_storage_share.fileshare](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_share) (resource)
 - [azurerm_subnet.subnets](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet) (resource)
 - [azurerm_subnet_network_security_group_association.nsg_ass](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet_network_security_group_association) (resource)
 - [azurerm_virtual_machine_data_disk_attachment.example_attach](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_machine_data_disk_attachment) (resource)
-- [azurerm_virtual_machine_extension.your-extension](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_machine_extension) (resource)
 - [azurerm_virtual_network.Spoke_01_vnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network) (resource)
 - [azurerm_virtual_network_peering.Hub-Spoke_01](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_peering) (resource)
 - [azurerm_virtual_network_peering.Spoke_01-To-Hub](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_peering) (resource)
 - [azurerm_windows_virtual_machine.VMs](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/windows_virtual_machine) (resource)
+- [local_file.mount_file_share](https://registry.terraform.io/providers/hashicorp/local/latest/docs/resources/file) (resource)
 - [azurerm_key_vault.Key_vault](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault) (data source)
 - [azurerm_key_vault_secret.vm_admin_password](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault_secret) (data source)
 - [azurerm_key_vault_secret.vm_admin_username](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault_secret) (data source)
@@ -453,30 +336,6 @@ Type: `string`
 ### <a name="input_file_share_name"></a> [file\_share\_name](#input\_file\_share\_name)
 
 Description: The name of file share name
-
-Type: `string`
-
-### <a name="input_private_dns_a_record"></a> [private\_dns\_a\_record](#input\_private\_dns\_a\_record)
-
-Description: The name of private DNS virtual network link name
-
-Type: `string`
-
-### <a name="input_private_dns_zone_name"></a> [private\_dns\_zone\_name](#input\_private\_dns\_zone\_name)
-
-Description: The name of private DNS zone name
-
-Type: `string`
-
-### <a name="input_private_dns_zone_vnet_link"></a> [private\_dns\_zone\_vnet\_link](#input\_private\_dns\_zone\_vnet\_link)
-
-Description: The name of private DNS virtual network link name
-
-Type: `string`
-
-### <a name="input_private_endpoint_name"></a> [private\_endpoint\_name](#input\_private\_endpoint\_name)
-
-Description: The name of private endpoint name
 
 Type: `string`
 

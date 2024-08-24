@@ -120,90 +120,7 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_03" {
   use_remote_gateways       = false
   depends_on = [ azurerm_virtual_network.Spoke_03_vnet , data.azurerm_virtual_network.Hub_vnet ]
 }
-
-# # Creates the private endpoint
-# resource "azurerm_private_endpoint" "app_endpoint" {
-#   name = var.private_endpoint_name
-#   resource_group_name = azurerm_app_service.web_app.resource_group_name
-#   location = azurerm_app_service.web_app.location
-#   subnet_id = azurerm_subnet.subnets["AppServiceSubnet"].id
-#   private_service_connection {
-#     name = "web_app_privatelink"
-#     private_connection_resource_id = azurerm_app_service.web_app.id
-#     subresource_names = [ "sites" ]
-#     is_manual_connection = false
-#   }
-#   depends_on = [ azurerm_subnet.subnets , azurerm_app_service.web_app ]
-# }
-
-# # Creates the private DNS zone
-# resource "azurerm_private_dns_zone" "pr_dns_zone" {
-#   name = var.private_dns_zone_name
-#   resource_group_name = azurerm_resource_group.Spoke_03.name
-#   depends_on = [ azurerm_resource_group.Spoke_03 ]
-# }
-
-# # Creates the virtual network link in private DNS zone
-# resource "azurerm_private_dns_zone_virtual_network_link" "vnet_link" {
-#   name = var.private_dns_zone_vnet_link
-#   resource_group_name = azurerm_private_dns_zone.pr_dns_zone.resource_group_name
-#   private_dns_zone_name = azurerm_private_dns_zone.pr_dns_zone.name
-#   virtual_network_id = data.azurerm_virtual_network.Hub_vnet.id     # Creates the link to Hub vnet
-#   #virtual_network_id = azurerm_virtual_network.Spoke_01_vnet["Spoke_03_vnet"].id
-#   depends_on = [ azurerm_private_dns_zone.pr_dns_zone , data.azurerm_virtual_network.Hub_vnet ]
-# }
-
-# # Creates the records in private DNS zone
-# resource "azurerm_private_dns_a_record" "dns_record" {
-#   name = var.private_dns_a_record
-#   zone_name = azurerm_private_dns_zone.pr_dns_zone.name
-#   resource_group_name = azurerm_private_dns_zone.pr_dns_zone.resource_group_name
-#   ttl = 300
-#   records = [ azurerm_private_endpoint.app_endpoint.private_service_connection[0].private_ip_address ]
-#   depends_on = [ azurerm_private_dns_zone.pr_dns_zone , azurerm_private_endpoint.app_endpoint  ]
-# }
-
-
-# # Creates the policy definition
-# resource "azurerm_policy_definition" "rg_policy_def" {
-#   name         = "Spoke03_rg-policy"
-#   policy_type  = "Custom"
-#   mode         = "All"
-#   display_name = "Spoke03 Policy"
-#   description  = "A policy to demonstrate resource group level policy."
- 
-#   policy_rule = <<POLICY_RULE
-#   {
-#     "if": {
-#       "field": "location",
-#       "equals": "East US"
-#     },
-#     "then": {
-#       "effect": "deny"
-#     }
-#   }
-#   POLICY_RULE
- 
-#   metadata = <<METADATA
-#   {
-#     "category": "General"
-#   }
-#   METADATA
-# }
- 
-# # Assign the policy
-# resource "azurerm_policy_assignment" "example" {
-#   name                 = "Spoke03-rg-policy-assignment"
-#   policy_definition_id = azurerm_policy_definition.rg_policy_def.id
-#   scope                = azurerm_resource_group.Spoke_03.id
-#   display_name         = "Spoke03_RG Policy Assignment"
-#   description          = "Assigning policy to the resource group"
-# }
 ```
-
-### Resource Visualizer in Azure portal :
-
-![sp3](https://github.com/user-attachments/assets/66d57aeb-4f15-42a7-8dcd-02e09e906ea9)
 
 <!-- markdownlint-disable MD033 -->
 ## Requirements
@@ -238,30 +155,6 @@ The following resources are used by this module:
 ## Required Inputs
 
 The following input variables are required:
-
-### <a name="input_private_dns_a_record"></a> [private\_dns\_a\_record](#input\_private\_dns\_a\_record)
-
-Description: The name of private DNS virtual network link name
-
-Type: `string`
-
-### <a name="input_private_dns_zone_name"></a> [private\_dns\_zone\_name](#input\_private\_dns\_zone\_name)
-
-Description: The name of private DNS zone name
-
-Type: `string`
-
-### <a name="input_private_dns_zone_vnet_link"></a> [private\_dns\_zone\_vnet\_link](#input\_private\_dns\_zone\_vnet\_link)
-
-Description: The name of private DNS virtual network link name
-
-Type: `string`
-
-### <a name="input_private_endpoint_name"></a> [private\_endpoint\_name](#input\_private\_endpoint\_name)
-
-Description: The name of private endpoint name
-
-Type: `string`
 
 ### <a name="input_rg_location"></a> [rg\_location](#input\_rg\_location)
 

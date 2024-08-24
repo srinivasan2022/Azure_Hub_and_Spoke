@@ -54,9 +54,10 @@ resource "azurerm_storage_container" "project_state" {
 }
  
 ```
-### Resource Visualizer in Azure portal :
+### State files in Container :
 
-![backend](https://github.com/user-attachments/assets/d4198f04-f8e0-4a2f-8f54-3f3591d401ba)
+![backend](https://github.com/user-attachments/assets/3ae8b17e-abc3-4fc5-a0e0-a97b1f625a65)
+
 
 
 ## Remote State Files

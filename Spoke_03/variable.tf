@@ -42,23 +42,3 @@ variable "web_app_name" {
   type = string
   default = "The name of web app name"
 }
-
-variable "private_endpoint_name" {
- type = string
- description = "The name of private endpoint name"
-}
-
-variable "private_dns_zone_name" {
- type = string
- description = "The name of private DNS zone name"
-}
-
-variable "private_dns_zone_vnet_link" {
- type = string
- description = "The name of private DNS virtual network link name"
-}
-
-variable "private_dns_a_record" {
- type = string
- description = "The name of private DNS virtual network link name"
-}

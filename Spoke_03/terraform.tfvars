@@ -24,11 +24,4 @@ app_service_plan_name = "appserviceplan"
 
 web_app_name = "my-webapp1603"
 
-private_endpoint_name = "web-app-endpoint"
-
-private_dns_zone_name = "privatelink.azurewebsites.net"
-
-private_dns_zone_vnet_link = "Spoke03-DNS-link"
-
-private_dns_a_record = "webapp2024"
 

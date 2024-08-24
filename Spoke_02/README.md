@@ -77,9 +77,6 @@ resource "azurerm_network_security_group" "nsg" {
 
 # Associate the NSG for their Subnets
 resource "azurerm_subnet_network_security_group_association" "nsg_ass" {
-  # for_each = { for idx , subnet in azurerm_subnet.subnets : idx => subnet.id}
-  # subnet_id                 = each.value
-  # network_security_group_id =   azurerm_network_security_group.nsg[local.nsg_names[each.key]].id
   subnet_id = azurerm_subnet.subnets["VMSS"].id
   network_security_group_id = azurerm_network_security_group.nsg["VMSS"].id
   depends_on = [ azurerm_network_security_group.nsg ]
@@ -94,64 +91,9 @@ resource "azurerm_public_ip" "public_ip" {
   sku                 = "Standard"
 }
 
-# Create the Application for their dedicated subnet
-resource "azurerm_application_gateway" "appGW" {
-  name                = "App-Gateway"
-  resource_group_name = azurerm_resource_group.Spoke_02.name
-  location = azurerm_resource_group.Spoke_02.location
-  sku {
-    name     = "Standard_v2"
-    tier     = "Standard_v2"
-    capacity = 2
-  } 
-
-  gateway_ip_configuration {
-    name      = "appgw-ip-config"
-    subnet_id = azurerm_subnet.subnets["App-GW"].id
-  }
-
-  frontend_ip_configuration {
-    name                 = "appgw-frontend-ip"
-    public_ip_address_id = azurerm_public_ip.public_ip.id
-  }
-
-  frontend_port {
-    name = "frontend-port"
-    port = 80
-  }
-
-  backend_address_pool {
-    name = "appgw-backend-pool"
-  }
-
-  backend_http_settings {
-    name                  = "appgw-backend-http-settings"
-    cookie_based_affinity = "Disabled"
-    port                  = 80
-    protocol              = "Http"
-    request_timeout       = 20
-  }
-
-  http_listener {
-    name                           = "appgw-http-listener"
-    frontend_ip_configuration_name = "appgw-frontend-ip"
-    frontend_port_name             = "frontend-port"
-    protocol                       = "Http"
-  }
-
-  request_routing_rule {
-    name                       = "appgw-routing-rule"
-    rule_type                  = "Basic"
-    http_listener_name         = "appgw-http-listener"
-    backend_address_pool_name  = "appgw-backend-pool"
-    backend_http_settings_name = "appgw-backend-http-settings"
-  }
-    depends_on = [azurerm_resource_group.Spoke_02 ,azurerm_subnet.subnets ,azurerm_public_ip.public_ip]
- }
-
 # Fetch the data from key vault
 data "azurerm_key_vault" "Key_vault" {
-  name                = "MyKeyVault160322"
+  name                = "AzMyKeyVault160322"
   resource_group_name = "On_Premises_RG"
 }
 
@@ -166,6 +108,102 @@ data "azurerm_key_vault_secret" "vm_admin_password" {
   name         = "Spokevmvirtualmachinepassword"
   key_vault_id = data.azurerm_key_vault.Key_vault.id
 }
+
+# Get the Certificate from key vault certificate
+data "azurerm_key_vault_certificate" "key_vault_Cert" {
+  name = "ssl-cert"
+  key_vault_id = data.azurerm_key_vault.Key_vault.id
+}
+
+
+# Creates the Managed user identity
+resource "azurerm_user_assigned_identity" "user_ass_identity" {
+  name                = "appgw-user_identity"
+  resource_group_name = azurerm_resource_group.Spoke_02.name
+  location            = azurerm_resource_group.Spoke_02.location
+  depends_on = [ azurerm_resource_group.Spoke_02 ]
+}
+
+# Creates the Key vault access policy
+resource "azurerm_key_vault_access_policy" "key_vault_policy" {
+  key_vault_id = data.azurerm_key_vault.Key_vault.id
+  tenant_id    = "3060b492-90b8-4040-80ae-612072ce9037"
+  object_id    = azurerm_user_assigned_identity.user_ass_identity.principal_id
+
+  certificate_permissions = ["Get", "List"]
+  secret_permissions      = ["Get", "List"]
+  key_permissions         = ["Get", "List"]
+  depends_on = [ data.azurerm_key_vault.Key_vault ]
+}
+
+# Create the Application for their dedicated subnet
+resource "azurerm_application_gateway" "appGW" {
+  name                = "App-Gateway"
+  resource_group_name = azurerm_resource_group.Spoke_02.name
+  location = azurerm_resource_group.Spoke_02.location
+  sku {
+    name     = "Standard_v2"
+    tier     = "Standard_v2"
+    capacity = 2
+  } 
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.user_ass_identity.id]
+  }
+
+  gateway_ip_configuration {
+    name      = "appgw-ip-config"
+    subnet_id = azurerm_subnet.subnets["App-GW"].id
+  }
+
+  frontend_ip_configuration {
+    name                 = "appgw-frontend-ip"
+    public_ip_address_id = azurerm_public_ip.public_ip.id
+  }
+
+  frontend_port {
+    name = "frontend-port"
+    port = 443
+  }
+
+  backend_address_pool {
+    name = "appgw-backend-pool"
+  }
+
+  backend_http_settings {
+    name                  = "appgw-backend-http-settings"
+    cookie_based_affinity = "Disabled"
+    port                  = 80
+    protocol              = "Http"
+    request_timeout       = 20
+    
+  }
+
+  http_listener {
+    name                           = "appgw-http-listener"
+    frontend_ip_configuration_name = "appgw-frontend-ip"
+    frontend_port_name             = "frontend-port"
+    protocol                       = "Https"
+    ssl_certificate_name = "ssl-cert"
+  }
+
+  ssl_certificate {
+    name = "ssl-cert"
+    key_vault_secret_id = data.azurerm_key_vault_certificate.key_vault_Cert.secret_id
+  }
+
+  request_routing_rule {
+    name                       = "appgw-routing-rule"
+    rule_type                  = "Basic"
+    http_listener_name         = "appgw-http-listener"
+    backend_address_pool_name  = "appgw-backend-pool"
+    backend_http_settings_name = "appgw-backend-http-settings"
+  }
+    depends_on = [azurerm_resource_group.Spoke_02 ,azurerm_subnet.subnets ,azurerm_public_ip.public_ip , 
+    data.azurerm_key_vault_certificate.key_vault_Cert , azurerm_user_assigned_identity.user_ass_identity ,azurerm_key_vault_access_policy.key_vault_policy]
+ }
+
 
 # Create windows Virtual Machine Scale Set (VMSS)
 resource "azurerm_windows_virtual_machine_scale_set" "vmss" {
@@ -230,48 +268,8 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_02" {
   depends_on = [ azurerm_virtual_network.Spoke_02_vnet , data.azurerm_virtual_network.Hub_vnet ]
 }
 
-# # Creates the policy definition
-# resource "azurerm_policy_definition" "rg_policy_def" {
-#   name         = "Spoke02_rg-policy"
-#   policy_type  = "Custom"
-#   mode         = "All"
-#   display_name = "Spoke02 Policy"
-#   description  = "A policy to demonstrate resource group level policy."
- 
-#   policy_rule = <<POLICY_RULE
-#   {
-#     "if": {
-#       "field": "location",
-#       "equals": "East US"
-#     },
-#     "then": {
-#       "effect": "deny"
-#     }
-#   }
-#   POLICY_RULE
- 
-#   metadata = <<METADATA
-#   {
-#     "category": "General"
-#   }
-#   METADATA
-# }
- 
-# # Assign the policy
-# resource "azurerm_policy_assignment" "example" {
-#   name                 = "Spoke02-rg-policy-assignment"
-#   policy_definition_id = azurerm_policy_definition.rg_policy_def.id
-#   scope                = azurerm_resource_group.Spoke_01.id
-#   display_name         = "Spoke02_RG Policy Assignment"
-#   description          = "Assigning policy to the resource group"
-# }
-
 
 ```
-
-### Resource Visualizer in Azure portal :
-
-![sp2](https://github.com/user-attachments/assets/67fa7d74-9e69-4722-a48a-8cdb30ec2ed4)
 
 <!-- markdownlint-disable MD033 -->
 ## Requirements
@@ -293,16 +291,19 @@ The following providers are used by this module:
 The following resources are used by this module:
 
 - [azurerm_application_gateway.appGW](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/application_gateway) (resource)
+- [azurerm_key_vault_access_policy.key_vault_policy](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/key_vault_access_policy) (resource)
 - [azurerm_network_security_group.nsg](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_security_group) (resource)
 - [azurerm_public_ip.public_ip](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/public_ip) (resource)
 - [azurerm_resource_group.Spoke_02](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) (resource)
 - [azurerm_subnet.subnets](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet) (resource)
 - [azurerm_subnet_network_security_group_association.nsg_ass](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet_network_security_group_association) (resource)
+- [azurerm_user_assigned_identity.user_ass_identity](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/user_assigned_identity) (resource)
 - [azurerm_virtual_network.Spoke_02_vnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network) (resource)
 - [azurerm_virtual_network_peering.Hub-Spoke_02](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_peering) (resource)
 - [azurerm_virtual_network_peering.Spoke_02-To-Hub](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network_peering) (resource)
 - [azurerm_windows_virtual_machine_scale_set.vmss](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/windows_virtual_machine_scale_set) (resource)
 - [azurerm_key_vault.Key_vault](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault) (data source)
+- [azurerm_key_vault_certificate.key_vault_Cert](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault_certificate) (data source)
 - [azurerm_key_vault_secret.vm_admin_password](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault_secret) (data source)
 - [azurerm_key_vault_secret.vm_admin_username](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/key_vault_secret) (data source)
 - [azurerm_virtual_network.Hub_vnet](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/virtual_network) (data source)
@@ -354,22 +355,6 @@ map(object({
 
 The following input variables are optional (have default values):
 
-### <a name="input_admin_password"></a> [admin\_password](#input\_admin\_password)
-
-Description: n/a
-
-Type: `string`
-
-Default: `"pass@word1234"`
-
-### <a name="input_admin_username"></a> [admin\_username](#input\_admin\_username)
-
-Description: n/a
-
-Type: `string`
-
-Default: `"azureuser"`
-
 ### <a name="input_rules_file"></a> [rules\_file](#input\_rules\_file)
 
 Description: The name of CSV file containing NSG rules
@@ -381,10 +366,6 @@ Default: `"rules.csv"`
 ## Outputs
 
 The following outputs are exported:
-
-### <a name="output_AppGW"></a> [AppGW](#output\_AppGW)
-
-Description: n/a
 
 ### <a name="output_Spoke_02_RG"></a> [Spoke\_02\_RG](#output\_Spoke\_02\_RG)
 

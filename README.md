@@ -93,6 +93,15 @@ The service could be an Azure service such as:
 
 **[Azure File Share:](https://learn.microsoft.com/en-us/azure/storage/files/storage-files-introduction)** Azure Files offers fully managed file shares in the cloud that are accessible via the industry standard <mark>Server Message Block (SMB) protocol, Network File System (NFS) protocol</mark>, and Azure Files REST API. Azure file shares can be mounted concurrently by cloud or on-premises deployments. <mark>SMB Azure file shares are accessible from Windows, Linux, and macOS clients</mark>. <mark>NFS Azure file shares are accessible from Linux clients</mark>. Additionally, SMB Azure file shares can be cached on Windows servers with Azure File Sync for fast access near where the data is being used.
 
+<img src="https://miro.medium.com/v2/resize:fit:600/1*b0oZ-Da1LxW4TdujAOiC9Q.png" width="90px" align="right">
+
+**[Azure Key Vault:](https://learn.microsoft.com/en-us/azure/key-vault/general/basic-concepts)** Azure Key Vault is a cloud service that provides a secure way to manage and protect sensitive information such as secrets, keys, and certificates. It helps you safeguard cryptographic keys and secrets used by cloud applications and services, providing enhanced data protection and ensuring compliance with industry standards.
+
+<img src="https://azure.microsoft.com/svghandler/monitor/?width=600&height=315" width="100px" align="right">
+
+**[IP Groups:](https://learn.microsoft.com/en-us/azure/firewall/ip-groups)** IP Groups allow grouping and managing IP addresses for Azure Firewall rules as either source or destination addresses in network rules, as well as source addresses in DNAT and application rules​​.<mark>Maximum 5000 individual IP addresses or IP prefixes per each IP Group.</mark>
+
+
 <img src="https://azure.microsoft.com/svghandler/monitor/?width=600&height=315" width="100px" align="right">
 
 **[Azure Monitor:](https://learn.microsoft.com/en-us/azure/azure-monitor/overview)** Azure Monitor can collect, analyze, and act on telemetry data from cross-premises environments, including Azure and on-premises. Azure Monitor helps you maximize the performance and availability of your applications and proactively identify problems in seconds.
@@ -193,4 +202,3 @@ Evaluate the services you share in the hub to ensure that the hub scales for a l
 </div>
 
 ---
-

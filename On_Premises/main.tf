@@ -119,23 +119,105 @@ resource "azurerm_key_vault" "Key_vault" {
   tenant_id                   = data.azurerm_client_config.current.tenant_id
   purge_protection_enabled    = true
   soft_delete_retention_days = 30
-  access_policy {
-    tenant_id = data.azurerm_client_config.current.tenant_id
-    object_id = data.azuread_client_config.current.object_id
+  network_acls {
+    bypass = "AzureServices"
+    default_action = "Allow"
+  }
 
+  access_policy {
+    tenant_id = "3060b492-90b8-4040-80ae-612072ce9037"
+    object_id = data.azuread_client_config.current.object_id
+    
     secret_permissions = [
       "Get",
-      "Set",
-      "Backup",
-      "Delete",
-      "Purge", 
       "List",
+      "Set",
+      "Delete",
+      "Backup",
       "Recover",
-      "Restore",
+      "Purge"
+    ]
+
+    certificate_permissions = [
+      "Get",
+      "List",
+      "Create",
+      "Delete",
+      "Update",
+      "Import",
+      "ManageContacts",
+      "ManageIssuers",
+      "Purge",
+      "Recover"
+    ]
+
+    key_permissions = [
+      "Get",
+      "List",
+      "Create",
+      "Update",
+      "Import",
+      "Delete"
     ]
   }
   depends_on = [ azurerm_resource_group.On_Premises ]
 }
+
+# Creates the Key vault certificate 
+resource "azurerm_key_vault_certificate" "example" {
+  name         = "ssl-cert"
+  key_vault_id = azurerm_key_vault.Key_vault.id
+
+  certificate_policy {
+    issuer_parameters {
+      name = "Self"
+    }
+
+    key_properties {
+      exportable = true
+      key_size   = 2048
+      key_type   = "RSA"
+      reuse_key  = true
+    }
+
+    lifetime_action {
+      action {
+        action_type = "AutoRenew"
+      }
+
+      trigger {
+        days_before_expiry = 30
+      }
+    }
+
+    secret_properties {
+      content_type = "application/x-pkcs12"
+    }
+
+    x509_certificate_properties {
+      extended_key_usage = ["1.3.6.1.5.5.7.3.1"]
+
+      key_usage = [
+        "cRLSign",
+        "dataEncipherment",
+        "digitalSignature",
+        "keyAgreement",
+        "keyCertSign",
+        "keyEncipherment",
+      ]
+
+      subject_alternative_names {
+        dns_names = ["internal.contoso.com", "domain.hello.world"]
+      }
+
+      subject            = "CN=hello-world"
+      validity_in_months = 12
+    }
+  }
+  depends_on = [ azurerm_key_vault.Key_vault ]
+}
+
+
 
 # Creates the Azure Key vault secret to store the VM username and password
 resource "azurerm_key_vault_secret" "vm_admin_username" {

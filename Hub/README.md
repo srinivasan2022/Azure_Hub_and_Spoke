@@ -106,7 +106,7 @@ resource "azurerm_ip_group" "Ip_group" {
   name                = "Spoke-Ip-Group"
   resource_group_name = azurerm_resource_group.Hub.name
   location            = azurerm_resource_group.Hub.location
-  cidrs = [ "10.10.0.0/16" , "10.20.0.0/16" , "10.30.0.0/16" ]
+  cidrs = [ "10.20.0.0/16" , "10.30.0.0/16" , "10.40.0.0/16" ]
   depends_on = [ azurerm_resource_group.Hub ]
 }
 
@@ -115,23 +115,7 @@ resource "azurerm_firewall_policy_rule_collection_group" "fw_policy_rule_collect
   name                = "app-rule-collection-group"
   firewall_policy_id  = azurerm_firewall_policy.firewall_policy.id
   priority            = 100
-
-  # nat_rule_collection {           # Create the DNAT rule collection for take the RDP to OnPremises VM
-  #   name     = "dnat-rule-collection"
-  #   priority = 100
-  #   action   = "Dnat"
-
-  #   rule {
-  #     name             = "Allow-RDP"
-  #     source_addresses = ["49.37.209.34"]   # My Router IP
-  #     destination_ports = ["3389"]
-  #     destination_address = azurerm_public_ip.public_ips["AzureFirewallSubnet"].ip_address
-  #     translated_address = "10.100.2.4"   # destination VM IP
-  #     translated_port    = "3389"
-  #     protocols         = ["TCP"]
-  #   }
-  # }
- 
+   
   network_rule_collection {     # Create the Network rule collection for forwarding the traffic betwwen Hub and OnPremises network
     name     = "network-rule-collection"
     priority = 200
@@ -139,52 +123,14 @@ resource "azurerm_firewall_policy_rule_collection_group" "fw_policy_rule_collect
 
     rule {
       name = "allow-spokes"
-      source_addresses = [ "10.100.0.0/16" ]     # OnPremises network address
-      destination_addresses = [ "10.20.0.0/16" ] # Spoke_01 network address
-      # destination_ip_groups = [ azurerm_ip_group.Ip_group.id ] # All Spoke network addresses
+      source_addresses = [ "10.100.0.0/16" ]       # OnPremises network address
+      # destination_addresses = [ "10.20.0.0/16" ]
+      destination_ip_groups = [ azurerm_ip_group.Ip_group.id ]  # All Spoke network addresses
       destination_ports = [ "*" ]
       protocols = [ "Any" ]
     }
- 
-    # rule {
-    #   name                  = "allow-spokes-Http"
-    #   #description           = "Allow DNS"
-    #   #rule_type             = "NetworkRule"
-    #   source_addresses      = ["10.100.0.0/16"]
-    #   destination_ip_groups = [azurerm_ip_group.Ip_group.id]
-    #   destination_ports     = ["80"]
-    #   protocols             = ["UDP", "TCP"]
-    # }
-    # rule {
-    #   name = "allow-spokes_RDP"
-    #   source_addresses      = ["10.100.2.0/24"]
-    #   destination_addresses = ["10.20.1.0/24" ]
-    #   #destination_ip_groups  = [azurerm_ip_group.Ip_group.id]
-    #   destination_ports     = ["3389"]
-    #   protocols             = ["TCP"]
-    # }
   }
  
-  # application_rule_collection {       # Create the Application rule collection
-  #   name     = "application-rule-collection"
-  #   priority = 300
-  #   action   = "Allow"
- 
-  #   rule {
-  #     name             = "allow-web"
-  #     description      = "Allow-Web-Access"
-  #     source_addresses = ["10.20.1.4"]  # Allow website only from [10.20.1.4]
-  #     protocols {
-  #       type = "Http"
-  #       port = 80
-  #     }
-  #     protocols {
-  #       type = "Https"
-  #       port = 443
-  #     } 
-  #     destination_fqdns = ["*.microsoft.com"]  
-  #   }
-  # } 
   depends_on = [ azurerm_firewall.firewall , azurerm_ip_group.Ip_group ]
 }
 
@@ -227,8 +173,8 @@ resource "azurerm_local_network_gateway" "Hub_local_gateway" {
   name                = "Hub-To-OnPremises"
   resource_group_name = azurerm_virtual_network_gateway.gateway.resource_group_name
   location = azurerm_virtual_network_gateway.gateway.location
-  gateway_address     = data.azurerm_public_ip.OnPrem-VPN-GW-public-ip.ip_address        # TODO:  Replace the Hub-VPN Public-IP
-  address_space       = [data.azurerm_virtual_network.On_Premises_vnet.address_space[0]]  # TODO:  Replace the OnPremises Vnet address space
+  gateway_address     = data.azurerm_public_ip.OnPrem-VPN-GW-public-ip.ip_address          # Replace the Hub-VPN Public-IP
+  address_space       = [data.azurerm_virtual_network.On_Premises_vnet.address_space[0]]   # Replace the OnPremises Vnet address space
   depends_on = [ azurerm_public_ip.public_ips , azurerm_virtual_network_gateway.gateway , 
               data.azurerm_public_ip.OnPrem-VPN-GW-public-ip ,data.azurerm_virtual_network.On_Premises_vnet ]
 }
@@ -274,42 +220,6 @@ resource "azurerm_subnet_route_table_association" "RT-ass" {
 }
 
 
-# # Creates the policy definition
-# resource "azurerm_policy_definition" "rg_policy_def" {
-#   name         = "Hub_rg-policy"
-#   policy_type  = "Custom"
-#   mode         = "All"
-#   display_name = "Hub Policy"
-#   description  = "A policy to demonstrate resource group level policy."
- 
-#   policy_rule = <<POLICY_RULE
-#   {
-#     "if": {
-#       "field": "location",
-#       "equals": "East US"
-#     },
-#     "then": {
-#       "effect": "deny"
-#     }
-#   }
-#   POLICY_RULE
- 
-#   metadata = <<METADATA
-#   {
-#     "category": "General"
-#   }
-#   METADATA
-# }
- 
-# # Assign the policy
-# resource "azurerm_policy_assignment" "example" {
-#   name                 = "Hub-rg-policy-assignment"
-#   policy_definition_id = azurerm_policy_definition.rg_policy_def.id
-#   scope                = azurerm_resource_group.Hub["Hub_RG"].id
-#   display_name         = "Hub_RG Policy Assignment"
-#   description          = "Assigning policy to the resource group"
-# }
-
 
 
 
@@ -317,9 +227,25 @@ resource "azurerm_subnet_route_table_association" "RT-ass" {
 
 ```
 
+### Deployments in Portal :
+
+![hub_portal](https://github.com/user-attachments/assets/be7543e1-8fd4-421d-a123-6a0c47ab5f42)
+
 ### Resource Visualizer in Azure portal :
 
-![hub](https://github.com/user-attachments/assets/ded069ba-35d3-408a-8649-caf233e6faf1)
+![hub_res_visual](https://github.com/user-attachments/assets/55f01a57-766f-448d-9094-b8ec17af5f75)
+
+### Hub network Peering with Spoke networks :
+
+![hub_peering](https://github.com/user-attachments/assets/5e8ed4cf-0b53-40e8-9ba4-a1b4d84f8fd4)
+
+### Hub network connected OnPremises network through VPN :
+
+![hub_vpn](https://github.com/user-attachments/assets/487372cb-b9d9-4006-acf1-20300c7da650)
+
+### Firewall policy :
+
+![fw_policy](https://github.com/user-attachments/assets/afafd93b-d5f2-4922-8ee1-bbbbba7c7c62)
 
 <!-- markdownlint-disable MD033 -->
 ## Requirements
