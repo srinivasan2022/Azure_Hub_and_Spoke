@@ -93,14 +93,29 @@ The service could be an Azure service such as:
 
 **[Azure File Share:](https://learn.microsoft.com/en-us/azure/storage/files/storage-files-introduction)** Azure Files offers fully managed file shares in the cloud that are accessible via the industry standard <mark>Server Message Block (SMB) protocol, Network File System (NFS) protocol</mark>, and Azure Files REST API. Azure file shares can be mounted concurrently by cloud or on-premises deployments. <mark>SMB Azure file shares are accessible from Windows, Linux, and macOS clients</mark>. <mark>NFS Azure file shares are accessible from Linux clients</mark>. Additionally, SMB Azure file shares can be cached on Windows servers with Azure File Sync for fast access near where the data is being used.
 
+<img src="https://azure.microsoft.com/svghandler/managed-disks/?width=600&height=315" width="90px" align="right">
+
+**[Azure Disk Storage:](https://learn.microsoft.com/en-us/azure/virtual-machines/managed-disks-overview)** Azure Disk Storage is a cloud-based block storage solution provided by Microsoft Azure. It is designed to provide high-performance, durable, and secure disk options for virtual machines (VMs), containers, and other Azure services. Azure Disk Storage is used as persistent storage, meaning that the data on the disks persists even after a VM is stopped or deallocated.It is a block storage service for Azure Virtual Machines (VMs) and Azure VMware Solution. It offers a variety of [disk types](https://learn.microsoft.com/en-us/azure/virtual-machines/disks-types), including:
+- Ultra Disk Storage
+- Premium SSD v2
+- Standard SSD
+- Standard HDD
+
 <img src="https://miro.medium.com/v2/resize:fit:600/1*b0oZ-Da1LxW4TdujAOiC9Q.png" width="90px" align="right">
 
-**[Azure Key Vault:](https://learn.microsoft.com/en-us/azure/key-vault/general/basic-concepts)** Azure Key Vault is a cloud service that provides a secure way to manage and protect sensitive information such as secrets, keys, and certificates. It helps you safeguard cryptographic keys and secrets used by cloud applications and services, providing enhanced data protection and ensuring compliance with industry standards.
+**[Azure Key Vault:](https://learn.microsoft.com/en-us/azure/key-vault/general/basic-concepts)** Azure Key Vault is a cloud service that provides a secure way to <mark>manage and protect sensitive information such as secrets, keys, and certificates</mark>. It helps you safeguard cryptographic keys and secrets used by cloud applications and services, providing enhanced data protection and ensuring compliance with industry standards.
+**Types :**
+- **Keys:** Primarily used for cryptographic operations like encryption, decryption, and signing.
+- **Secrets:** Store and manage sensitive data like passwords, API keys, and connection strings.
+- **Certificates:** Manage SSL/TLS certificates and other digital certificates for secure communication and authentication.
 
-<img src="https://azure.microsoft.com/svghandler/monitor/?width=600&height=315" width="100px" align="right">
+<img src="https://github.com/user-attachments/assets/ba42966e-261d-42c0-9b46-a2bb49f27530" width="60px" align="right">
 
 **[IP Groups:](https://learn.microsoft.com/en-us/azure/firewall/ip-groups)** IP Groups allow grouping and managing IP addresses for Azure Firewall rules as either source or destination addresses in network rules, as well as source addresses in DNAT and application rules​​.<mark>Maximum 5000 individual IP addresses or IP prefixes per each IP Group.</mark>
 
+<img src="https://blog.kloud.com.au/wp-content/uploads/2020/02/AzureRecoveryServicesVault-650x547.png" width="70px" align="right">
+
+**[Recovery Service Vault:](https://learn.microsoft.com/en-us/azure/backup/backup-azure-recovery-services-vault-overview)** A Recovery Services vault is an entity that stores the backups and recovery points created over time. The Recovery Services vault also contains the backup policies that are associated with the protected virtual machines. Azure Backup automatically handles storage for the vault. See how storage settings can be changed
 
 <img src="https://azure.microsoft.com/svghandler/monitor/?width=600&height=315" width="100px" align="right">
 
