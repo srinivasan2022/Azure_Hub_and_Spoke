@@ -279,6 +279,12 @@ resource "azurerm_backup_protected_vm" "protected_vm" {
  
 ```
 
+### Deployments in Portal :
+![spoke01_portal](https://github.com/user-attachments/assets/46e7d76d-53ce-42eb-bc56-012105a3488f)
+
+### Resource Visualizer in Azure portal :
+![sp1](https://github.com/user-attachments/assets/08cc2ac4-a9e8-463e-851c-d037ede50e5e)
+
 <!-- markdownlint-disable MD033 -->
 ## Requirements
 

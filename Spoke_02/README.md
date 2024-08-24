@@ -270,6 +270,11 @@ resource "azurerm_virtual_network_peering" "Hub-Spoke_02" {
 
 
 ```
+### Deployments in Portal :
+![spoke02_portal](https://github.com/user-attachments/assets/75b84b91-8de2-40ff-93ea-7ec70e7a6314)
+
+### Resource Visualizer in Azure portal :
+![spoke02_res_visual](https://github.com/user-attachments/assets/794efe43-efd2-4234-8226-4570e908ea1a)
 
 <!-- markdownlint-disable MD033 -->
 ## Requirements
