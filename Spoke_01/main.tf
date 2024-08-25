@@ -245,7 +245,7 @@ resource "azurerm_backup_protected_vm" "protected_vm" {
   for_each = azurerm_windows_virtual_machine.VMs
   resource_group_name    = azurerm_resource_group.Spoke_01.name
   recovery_vault_name    = azurerm_recovery_services_vault.vault.name
-  source_vm_id           = each.key.id
+  source_vm_id           = each.value.id
   backup_policy_id       = azurerm_backup_policy_vm.backup_policy.id
 }
  
