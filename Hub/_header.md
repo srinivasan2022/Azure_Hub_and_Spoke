@@ -7,7 +7,7 @@
 - 6.We should create the Local Network Gateway and Connection service for establish the connection between On_premises and Hub.
 
 ## Architecture Diagram :
-![HUB](https://github.com/user-attachments/assets/975b790f-e4fe-4106-8173-cb6650e01b66)
+![HUB](https://github.com/user-attachments/assets/edf4829f-002d-43dd-9c6d-aef6ad956682)
 
 ###### Apply the Terraform configurations :
 Deploy the resources using Terraform,

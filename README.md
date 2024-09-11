@@ -12,20 +12,35 @@ This project will implement an Azure [Hub and Spoke](https://learn.microsoft.com
 - 4.If not so , If we creates the [Onprem](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/On_Premises) network , we should creates still gateway in [Onprem](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/On_Premises) network , because [Hub](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/Hub) vnet address and gateway Ip address are required for [Onprem](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/On_Premises) network , then we creates the [Hub](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/Hub) network. 
 - 5.Then we can creates the other [Spoke-01](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/Spoke_01) , [Spoke-02](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/Spoke_02) and [Spoke-03](https://github.com/srinivasan2022/Azure_Hub_and_Spoke/tree/main/Spoke_03) Networks.
 
-#### Steps :
+## Architecture Overview
 
-- 1.We need to create the On_Premises , Hub , Spoke_01 , Spoke_02 , Spoke_03 networks.
-- 2.Hub is the central point of connectivity between Hub and Spoke networks.
-- 3.The On_premises network establish the connection to Hub network through the internet using VPN Gateway (S2S).
-- 4.The Spoke_01 network establish the connection to Hub network by VNET Peering.
-- 5.The Spoke_02 network establish the connection to Hub network by VNET Peering.
-- 6.The Spoke_01 should communicates Spoke_02 through Hub network. 
-- 7.All VMs must have daily backups enabled. 
-- 8.Regional replication must be enabled for all VM backups to ensure data redundancy. 
-- 9.All Azure Policies should be scoped to the Resource Group level. 
-- 10.All VMs should remain private, without public IP addresses.
-- 11.All logs should go to Log Analytic workspace.
+The **Hub and Spoke** topology includes:
+- A central Hub VNet for shared resources, such as firewalls and VPN gateways.
+- Multiple Spoke VNets that connect to the Hub and are used for isolated environments like Dev, Test, and Prod.
+- Communication between the Spokes through the Hub, ensuring centralized security and monitoring.
 
+### Features
+- **Centralized Network Management** : The Hub serves as the primary network for shared services, while Spokes are used to isolate different environments.
+- **Secure Communication** : Secure connections are established between Spokes and the Hub for controlled traffic flow.
+- **Scalable Design** : The architecture can easily scale to accommodate additional Spokes.
+
+### Repository Structure
+
+```bash
+Azure_Hub_and_Spoke/
+│
+├── main.tf             # Main Terraform configuration file
+├── variables.tf        # Input variables for customization
+├── outputs.tf          # Outputs the deployment details
+└── README.md           # Project documentation
+```
+## Getting Started
+
+### Prerequisites
+
+- **Terraform**: Make sure you have Terraform installed. You can download it [here](https://www.terraform.io/downloads.html).
+- **Azure Subscription**: Ensure you have an active Azure subscription to deploy resources.
+- **Service Principal**: You will need a service principal with appropriate permissions to deploy resources in Azure.
 ## Architecture Diagram :
 <img src="Images/Overall.png" align="center">
 
